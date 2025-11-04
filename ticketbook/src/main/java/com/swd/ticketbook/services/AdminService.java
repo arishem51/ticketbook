@@ -51,6 +51,12 @@ public class AdminService {
     @Autowired
     private VNPayService vnPayService;
 
+    @Autowired
+    private EventUpdateRequestRepository updateRequestRepository;
+
+    @Autowired
+    private WithdrawalRequestRepository withdrawalRequestRepository;
+
     // ==================== USER MANAGEMENT (UC-04.1 - 04.5) ====================
 
     /**
@@ -582,6 +588,168 @@ public class AdminService {
         return mapToRefundResponse(refund);
     }
 
+    // ==================== EVENT UPDATE REQUEST APPROVAL ====================
+
+    /**
+     * Get pending event update requests
+     */
+    public List<com.swd.ticketbook.dto.organizer.EventUpdateRequestResponse> getPendingUpdateRequests() {
+        List<com.swd.ticketbook.entities.EventUpdateRequest> requests = updateRequestRepository
+            .findByStatus("PENDING_REVIEW");
+        
+        log.info("Admin viewing pending update requests - Count: {}", requests.size());
+        
+        return requests.stream()
+            .map(this::mapToUpdateRequestResponse)
+            .collect(Collectors.toList());
+    }
+
+    /**
+     * Approve or reject event update request
+     */
+    @Transactional
+    public com.swd.ticketbook.dto.organizer.EventUpdateRequestResponse processUpdateRequest(
+            Long adminId, Long requestId, boolean approved, String adminNotes) {
+        
+        com.swd.ticketbook.entities.EventUpdateRequest request = updateRequestRepository.findById(requestId)
+            .orElseThrow(() -> new ResourceNotFoundException("Update request not found"));
+
+        if (!request.isPending()) {
+            throw new BusinessRuleViolationException("Update request is not pending review");
+        }
+
+        Event event = request.getEvent();
+
+        if (approved) {
+            // Apply proposed changes
+            if (request.getProposedName() != null) {
+                event.setName(request.getProposedName());
+            }
+            if (request.getProposedDescription() != null) {
+                event.setDescription(request.getProposedDescription());
+            }
+            if (request.getProposedStartDate() != null) {
+                event.setStartDate(request.getProposedStartDate());
+            }
+            if (request.getProposedEndDate() != null) {
+                event.setEndDate(request.getProposedEndDate());
+            }
+            if (request.getProposedLocation() != null) {
+                event.setLocation(request.getProposedLocation());
+            }
+            if (request.getProposedVenueName() != null) {
+                event.setVenueName(request.getProposedVenueName());
+            }
+            if (request.getProposedMaxTicketQuantity() != null) {
+                event.setMaxTicketQuantity(request.getProposedMaxTicketQuantity());
+            }
+            if (request.getProposedRefundAllowed() != null) {
+                event.setRefundAllowed(request.getProposedRefundAllowed());
+            }
+
+            event.setUpdatedAt(LocalDateTime.now());
+            eventRepository.save(event);
+
+            request.approve(adminId, adminNotes);
+            
+            log.info("Admin approved event update - Admin ID: {}, Request ID: {}", adminId, requestId);
+        } else {
+            request.reject(adminId, adminNotes);
+            log.info("Admin rejected event update - Admin ID: {}, Request ID: {}", adminId, requestId);
+        }
+
+        updateRequestRepository.save(request);
+
+        // Notify organizer
+        emailService.sendEventUpdateRequestDecision(
+            request.getOrganizer().getContact(),
+            request.getOrganizer().getFullName(),
+            event.getName(),
+            approved,
+            adminNotes
+        );
+
+        // FR20: Log admin action
+        log.info("Admin processed event update request - Admin ID: {}, Request ID: {}, Approved: {}", 
+                 adminId, requestId, approved);
+
+        return mapToUpdateRequestResponse(request);
+    }
+
+    // ==================== WITHDRAWAL APPROVAL ====================
+
+    /**
+     * Get pending withdrawal requests
+     */
+    public List<com.swd.ticketbook.dto.organizer.WithdrawalResponse> getPendingWithdrawals() {
+        List<com.swd.ticketbook.entities.WithdrawalRequest> requests = withdrawalRequestRepository
+            .findPendingWithdrawals();
+        
+        log.info("Admin viewing pending withdrawals - Count: {}", requests.size());
+        
+        return requests.stream()
+            .map(this::mapToWithdrawalResponse)
+            .collect(Collectors.toList());
+    }
+
+    /**
+     * Approve or reject withdrawal request
+     */
+    @Transactional
+    public com.swd.ticketbook.dto.organizer.WithdrawalResponse processWithdrawal(
+            Long adminId, Long requestId, boolean approved, String adminNotes) {
+        
+        com.swd.ticketbook.entities.WithdrawalRequest request = withdrawalRequestRepository.findById(requestId)
+            .orElseThrow(() -> new ResourceNotFoundException("Withdrawal request not found"));
+
+        if (!request.isPending()) {
+            throw new BusinessRuleViolationException("Withdrawal request is not pending review");
+        }
+
+        if (approved) {
+            request.approve(adminId, adminNotes);
+            request.markAsProcessing();
+            withdrawalRequestRepository.save(request);
+
+            // TODO: Process actual bank transfer
+            // For now, mark as completed immediately
+            String transactionRef = "TXN-" + System.currentTimeMillis();
+            request.complete(transactionRef);
+            withdrawalRequestRepository.save(request);
+
+            // Send confirmation
+            emailService.sendWithdrawalApproved(
+                request.getOrganizer().getContact(),
+                request.getOrganizer().getFullName(),
+                request.getAmount(),
+                transactionRef
+            );
+
+            log.info("Admin approved withdrawal - Admin ID: {}, Request ID: {}, Amount: {}", 
+                     adminId, requestId, request.getAmount());
+        } else {
+            request.reject(adminId, adminNotes);
+            withdrawalRequestRepository.save(request);
+
+            // Send rejection notification
+            emailService.sendWithdrawalRejected(
+                request.getOrganizer().getContact(),
+                request.getOrganizer().getFullName(),
+                request.getAmount(),
+                adminNotes
+            );
+
+            log.info("Admin rejected withdrawal - Admin ID: {}, Request ID: {}, Reason: {}", 
+                     adminId, requestId, adminNotes);
+        }
+
+        // FR20: Log admin action
+        log.info("Admin processed withdrawal - Admin ID: {}, Request ID: {}, Approved: {}", 
+                 adminId, requestId, approved);
+
+        return mapToWithdrawalResponse(request);
+    }
+
     // ==================== HELPER METHODS ====================
 
     private UserResponse mapToUserResponse(User user) {
@@ -668,6 +836,70 @@ public class AdminService {
         response.setProcessedDate(refund.getProcessedDate());
         response.setAdminNotes(refund.getAdminNotes());
         return response;
+    }
+
+    private com.swd.ticketbook.dto.organizer.EventUpdateRequestResponse mapToUpdateRequestResponse(
+            com.swd.ticketbook.entities.EventUpdateRequest request) {
+        
+        com.swd.ticketbook.dto.organizer.EventUpdateRequestResponse response = 
+            new com.swd.ticketbook.dto.organizer.EventUpdateRequestResponse();
+        
+        response.setRequestId(request.getRequestId());
+        response.setEventId(request.getEvent().getEventId());
+        response.setEventName(request.getEvent().getName());
+        response.setOrganizerId(request.getOrganizer().getUserId());
+        response.setOrganizerName(request.getOrganizer().getFullName());
+        response.setJustification(request.getJustification());
+        response.setStatus(request.getStatus());
+        response.setRequestedAt(request.getRequestedAt());
+        response.setReviewedAt(request.getReviewedAt());
+        response.setAdminNotes(request.getAdminNotes());
+        
+        // Build summary of proposed changes
+        StringBuilder changes = new StringBuilder();
+        if (request.getProposedName() != null) changes.append("Name, ");
+        if (request.getProposedDescription() != null) changes.append("Description, ");
+        if (request.getProposedLocation() != null) changes.append("Location, ");
+        if (request.getProposedStartDate() != null) changes.append("Start Date, ");
+        if (request.getProposedEndDate() != null) changes.append("End Date, ");
+        if (changes.length() > 0) {
+            changes.setLength(changes.length() - 2);
+        }
+        response.setProposedChanges(changes.toString());
+        
+        return response;
+    }
+
+    private com.swd.ticketbook.dto.organizer.WithdrawalResponse mapToWithdrawalResponse(
+            com.swd.ticketbook.entities.WithdrawalRequest request) {
+        
+        com.swd.ticketbook.dto.organizer.WithdrawalResponse response = 
+            new com.swd.ticketbook.dto.organizer.WithdrawalResponse();
+        
+        response.setRequestId(request.getRequestId());
+        response.setOrganizerId(request.getOrganizer().getUserId());
+        response.setOrganizerName(request.getOrganizer().getFullName());
+        response.setAmount(request.getAmount());
+        response.setAvailableBalance(request.getAvailableBalance());
+        response.setPlatformFee(request.getPlatformFee());
+        response.setBankName(request.getBankName());
+        response.setBankAccountNumber(maskAccountNumber(request.getBankAccountNumber()));
+        response.setBankAccountHolder(request.getBankAccountHolder());
+        response.setStatus(request.getStatus());
+        response.setRequestedAt(request.getRequestedAt());
+        response.setReviewedAt(request.getReviewedAt());
+        response.setProcessedAt(request.getProcessedAt());
+        response.setAdminNotes(request.getAdminNotes());
+        response.setTransactionReference(request.getTransactionReference());
+        
+        return response;
+    }
+
+    private String maskAccountNumber(String accountNumber) {
+        if (accountNumber == null || accountNumber.length() < 4) {
+            return "****";
+        }
+        return "****" + accountNumber.substring(accountNumber.length() - 4);
     }
 }
 

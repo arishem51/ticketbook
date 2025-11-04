@@ -34,4 +34,7 @@ public interface RefundInfoRepository extends JpaRepository<RefundInfo, Long> {
         Long userId, 
         RefundStatus status
     );
+    
+    // Find refunds by event (through ticket and order)
+    List<RefundInfo> findByTicket_Order_Event_EventId(Long eventId);
 }

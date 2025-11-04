@@ -351,6 +351,28 @@ public class EmailService {
     }
 
     /**
+     * Send KYC submission confirmation
+     * 
+     * @param email User email
+     * @param fullName User full name
+     */
+    public void sendKycSubmissionConfirmation(String email, String fullName) {
+        logger.info("Sending KYC submission confirmation to: {}", email);
+        
+        String subject = "Ticket Book - KYC Verification Submitted";
+        String message = String.format(
+            "Hello %s,\n\n" +
+            "Your KYC verification documents have been submitted successfully.\n\n" +
+            "Our admin team will review your application within 3-5 business days.\n" +
+            "You'll receive an email notification once your verification is processed.\n\n" +
+            "Thank you for your patience!",
+            fullName
+        );
+        
+        sendEmail(email, subject, message);
+    }
+
+    /**
      * Send KYC approval notification to user (UC-04 KYC)
      * 
      * @param email User email
@@ -388,6 +410,123 @@ public class EmailService {
                 fullName, notes
             );
         }
+        
+        sendEmail(email, subject, message);
+    }
+
+    /**
+     * Send event update request decision
+     * 
+     * @param email Organizer email
+     * @param fullName Organizer full name
+     * @param eventName Event name
+     * @param approved Whether request was approved
+     * @param adminNotes Admin notes/reason
+     */
+    public void sendEventUpdateRequestDecision(String email, String fullName, String eventName, 
+                                              boolean approved, String adminNotes) {
+        logger.info("Sending event update decision to: {} - Approved: {}", email, approved);
+        
+        String subject = approved ? 
+            "Ticket Book - Event Update Approved" :
+            "Ticket Book - Event Update Rejected";
+            
+        String message;
+        if (approved) {
+            message = String.format(
+                "Hello %s,\n\n" +
+                "Your update request for event '%s' has been approved.\n\n" +
+                "Admin Notes: %s\n\n" +
+                "The changes have been applied to your event.\n" +
+                "You can view the updated event in your Organizer Dashboard.",
+                fullName, eventName, adminNotes
+            );
+        } else {
+            message = String.format(
+                "Hello %s,\n\n" +
+                "Your update request for event '%s' has been reviewed.\n" +
+                "Status: Not Approved\n\n" +
+                "Reason: %s\n\n" +
+                "If you have questions, please contact support.",
+                fullName, eventName, adminNotes
+            );
+        }
+        
+        sendEmail(email, subject, message);
+    }
+
+    /**
+     * Send withdrawal request confirmation
+     * 
+     * @param email Organizer email
+     * @param fullName Organizer full name
+     * @param amount Withdrawal amount
+     */
+    public void sendWithdrawalRequestConfirmation(String email, String fullName, java.math.BigDecimal amount) {
+        logger.info("Sending withdrawal request confirmation to: {}", email);
+        
+        String subject = "Ticket Book - Withdrawal Request Received";
+        String message = String.format(
+            "Hello %s,\n\n" +
+            "Your withdrawal request has been submitted successfully.\n\n" +
+            "Amount: $%s\n\n" +
+            "Our admin team will review your request within 1-3 business days.\n" +
+            "The funds will be transferred to your registered bank account after approval.\n\n" +
+            "Thank you!",
+            fullName, amount.toString()
+        );
+        
+        sendEmail(email, subject, message);
+    }
+
+    /**
+     * Send withdrawal approved notification
+     * 
+     * @param email Organizer email
+     * @param fullName Organizer full name
+     * @param amount Withdrawal amount
+     * @param transactionRef Transaction reference
+     */
+    public void sendWithdrawalApproved(String email, String fullName, java.math.BigDecimal amount, 
+                                      String transactionRef) {
+        logger.info("Sending withdrawal approved notification to: {}", email);
+        
+        String subject = "Ticket Book - Withdrawal Approved";
+        String message = String.format(
+            "Hello %s,\n\n" +
+            "Your withdrawal request has been approved and processed.\n\n" +
+            "Amount: $%s\n" +
+            "Transaction Reference: %s\n\n" +
+            "The funds will be transferred to your registered bank account within 1-3 business days.\n\n" +
+            "Thank you!",
+            fullName, amount.toString(), transactionRef
+        );
+        
+        sendEmail(email, subject, message);
+    }
+
+    /**
+     * Send withdrawal rejected notification
+     * 
+     * @param email Organizer email
+     * @param fullName Organizer full name
+     * @param amount Withdrawal amount
+     * @param reason Rejection reason
+     */
+    public void sendWithdrawalRejected(String email, String fullName, java.math.BigDecimal amount, 
+                                      String reason) {
+        logger.info("Sending withdrawal rejection to: {}", email);
+        
+        String subject = "Ticket Book - Withdrawal Request Rejected";
+        String message = String.format(
+            "Hello %s,\n\n" +
+            "Your withdrawal request has been reviewed.\n" +
+            "Status: Not Approved\n\n" +
+            "Amount: $%s\n" +
+            "Reason: %s\n\n" +
+            "If you have questions, please contact support.",
+            fullName, amount.toString(), reason
+        );
         
         sendEmail(email, subject, message);
     }

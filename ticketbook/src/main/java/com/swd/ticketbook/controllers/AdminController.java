@@ -492,5 +492,129 @@ public class AdminController {
             ApiResponse.success(refund, message)
         );
     }
+
+    // ==================== EVENT UPDATE REQUEST APPROVAL ====================
+
+    /**
+     * Get pending event update requests
+     * GET /api/admin/update-requests/pending
+     * 
+     * @param admin Current authenticated admin
+     * @return List of pending update requests
+     */
+    @GetMapping("/update-requests/pending")
+    public ResponseEntity<ApiResponse<List<com.swd.ticketbook.dto.organizer.EventUpdateRequestResponse>>> getPendingUpdateRequests(
+            @CurrentUser User admin) {
+        
+        if (admin == null || admin.getRole() != UserRole.ADMIN) {
+            return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error("Access denied. Admin privileges required."));
+        }
+        
+        List<com.swd.ticketbook.dto.organizer.EventUpdateRequestResponse> requests = 
+            adminService.getPendingUpdateRequests();
+        
+        return ResponseEntity.ok(
+            ApiResponse.success(requests, "Pending update requests retrieved successfully")
+        );
+    }
+
+    /**
+     * Approve or reject event update request
+     * POST /api/admin/update-requests/{requestId}/approval
+     * 
+     * @param requestId Update request ID
+     * @param approved Whether to approve
+     * @param adminNotes Admin notes
+     * @param admin Current authenticated admin
+     * @return Updated request
+     */
+    @PostMapping("/update-requests/{requestId}/approval")
+    public ResponseEntity<ApiResponse<com.swd.ticketbook.dto.organizer.EventUpdateRequestResponse>> processUpdateRequest(
+            @PathVariable Long requestId,
+            @RequestParam boolean approved,
+            @RequestParam String adminNotes,
+            @CurrentUser User admin) {
+        
+        if (admin == null || admin.getRole() != UserRole.ADMIN) {
+            return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error("Access denied. Admin privileges required."));
+        }
+        
+        com.swd.ticketbook.dto.organizer.EventUpdateRequestResponse request = 
+            adminService.processUpdateRequest(admin.getUserId(), requestId, approved, adminNotes);
+        
+        String message = approved ? 
+            "Event update request approved successfully" : 
+            "Event update request rejected successfully";
+        
+        return ResponseEntity.ok(
+            ApiResponse.success(request, message)
+        );
+    }
+
+    // ==================== WITHDRAWAL APPROVAL ====================
+
+    /**
+     * Get pending withdrawal requests
+     * GET /api/admin/withdrawals/pending
+     * 
+     * @param admin Current authenticated admin
+     * @return List of pending withdrawals
+     */
+    @GetMapping("/withdrawals/pending")
+    public ResponseEntity<ApiResponse<List<com.swd.ticketbook.dto.organizer.WithdrawalResponse>>> getPendingWithdrawals(
+            @CurrentUser User admin) {
+        
+        if (admin == null || admin.getRole() != UserRole.ADMIN) {
+            return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error("Access denied. Admin privileges required."));
+        }
+        
+        List<com.swd.ticketbook.dto.organizer.WithdrawalResponse> withdrawals = 
+            adminService.getPendingWithdrawals();
+        
+        return ResponseEntity.ok(
+            ApiResponse.success(withdrawals, "Pending withdrawals retrieved successfully")
+        );
+    }
+
+    /**
+     * Approve or reject withdrawal request
+     * POST /api/admin/withdrawals/{requestId}/approval
+     * 
+     * @param requestId Withdrawal request ID
+     * @param approved Whether to approve
+     * @param adminNotes Admin notes
+     * @param admin Current authenticated admin
+     * @return Updated withdrawal
+     */
+    @PostMapping("/withdrawals/{requestId}/approval")
+    public ResponseEntity<ApiResponse<com.swd.ticketbook.dto.organizer.WithdrawalResponse>> processWithdrawal(
+            @PathVariable Long requestId,
+            @RequestParam boolean approved,
+            @RequestParam String adminNotes,
+            @CurrentUser User admin) {
+        
+        if (admin == null || admin.getRole() != UserRole.ADMIN) {
+            return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error("Access denied. Admin privileges required."));
+        }
+        
+        com.swd.ticketbook.dto.organizer.WithdrawalResponse withdrawal = 
+            adminService.processWithdrawal(admin.getUserId(), requestId, approved, adminNotes);
+        
+        String message = approved ? 
+            "Withdrawal approved and processed successfully" : 
+            "Withdrawal request rejected successfully";
+        
+        return ResponseEntity.ok(
+            ApiResponse.success(withdrawal, message)
+        );
+    }
 }
 

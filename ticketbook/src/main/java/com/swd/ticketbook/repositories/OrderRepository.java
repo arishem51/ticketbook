@@ -39,4 +39,10 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query("SELECT o FROM Order o WHERE o.bookingStatus = 'PENDING_PAYMENT' " +
            "AND o.reservationExpiresAt <= :now")
     List<Order> findExpiredPendingOrders(@Param("now") LocalDateTime now);
+    
+    // Check if event has any orders (sales started)
+    boolean existsByEvent_EventId(Long eventId);
+    
+    // Find orders by event
+    List<Order> findByEvent_EventId(Long eventId);
 }
