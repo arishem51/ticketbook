@@ -1,0 +1,87 @@
+# No Documentation File Creation Rule
+
+## Overview
+This rule prohibits the automatic creation of documentation files unless explicitly requested by the user.
+
+## Rule: Do Not Create Documentation Files
+
+### Prohibited File Types
+
+Do **NOT** create the following file types without explicit user request:
+- `.md` (Markdown files)
+- `.txt` (Text files)
+- `.doc` / `.docx` (Word documents)
+- `.pdf` (PDF documents)
+- `README.md` files
+- `CHANGELOG.md` files
+- `CONTRIBUTING.md` files
+- `LICENSE.md` / `LICENSE.txt` files
+- `DESIGN.md` or architecture documentation
+- `TODO.md` or task list files
+- Any other documentation-related files
+
+### Rationale
+
+- **Focus on Code**: Development time should be spent on implementation, not documentation
+- **User Preference**: Users will create documentation when they need it
+- **Avoid Clutter**: Prevents unnecessary files in the repository
+- **Context-Specific**: Documentation needs vary by project and team
+
+### When Documentation IS Allowed
+
+✅ **Create documentation ONLY when:**
+- User explicitly asks: "Create a README", "Add a CHANGELOG", etc.
+- User specifically requests: "Document this API", "Write setup instructions"
+- Project initialization explicitly requires it (e.g., package.json, requirements.txt)
+
+❌ **Do NOT create documentation when:**
+- Completing a feature implementation
+- Setting up a new project (unless explicitly requested)
+- Refactoring code
+- Fixing bugs
+- Adding new functionality
+- User says "finish up" or "complete the task"
+
+### Alternative Approaches
+
+Instead of creating documentation files:
+1. **Add code comments** for complex logic
+2. **Use JavaDoc/JSDoc** for method documentation
+3. **Provide inline explanations** in responses
+4. **Suggest documentation** but don't create it automatically
+
+### Examples
+
+#### ❌ Wrong - Unsolicited Documentation
+
+```
+User: "Implement user authentication"
+Assistant: *Creates AuthService.java*
+          *Creates README.md with setup instructions*  ← DON'T DO THIS
+          *Creates API_DOCS.md*  ← DON'T DO THIS
+```
+
+#### ✅ Correct - Code Only
+
+```
+User: "Implement user authentication"
+Assistant: *Creates AuthService.java*
+          *Adds JavaDoc comments to methods*
+          Done! Authentication service implemented.
+```
+
+#### ✅ Correct - Explicit Request
+
+```
+User: "Implement authentication and create a README explaining how to use it"
+Assistant: *Creates AuthService.java*
+          *Creates README.md*  ← OK because explicitly requested
+```
+
+## Summary
+
+**Default Behavior**: Code only, no documentation files.
+
+**Exception**: User explicitly requests documentation.
+
+This rule ensures efficient development and respects user preferences for when and how documentation should be created.

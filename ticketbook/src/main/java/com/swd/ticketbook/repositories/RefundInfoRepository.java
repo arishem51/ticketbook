@@ -1,8 +1,6 @@
 package com.swd.ticketbook.repositories;
 
 import com.swd.ticketbook.entities.RefundInfo;
-import com.swd.ticketbook.entities.Ticket;
-import com.swd.ticketbook.entities.User;
 import com.swd.ticketbook.enums.RefundStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -10,18 +8,27 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Repository for RefundInfo entity
+ */
 @Repository
 public interface RefundInfoRepository extends JpaRepository<RefundInfo, Long> {
     
-    List<RefundInfo> findByUser(User user);
+    // Find refund by ticket
+    Optional<RefundInfo> findByTicket_TicketId(Long ticketId);
     
-    List<RefundInfo> findByStatus(RefundStatus status);
+    // Check if ticket has pending refund request
+    boolean existsByTicket_TicketIdAndStatus(Long ticketId, RefundStatus status);
     
-    Optional<RefundInfo> findByTicket(Ticket ticket);
+    // Find all refunds by user
+    List<RefundInfo> findByUser_UserIdOrderByRequestDateDesc(Long userId);
     
-    /**
-     * Check if ticket already has a pending refund request
-     */
-    boolean existsByTicketAndStatus(Ticket ticket, RefundStatus status);
+    // Find refunds by status
+    List<RefundInfo> findByStatusOrderByRequestDateAsc(RefundStatus status);
+    
+    // Find user's refunds by status
+    List<RefundInfo> findByUser_UserIdAndStatusOrderByRequestDateDesc(
+        Long userId, 
+        RefundStatus status
+    );
 }
-

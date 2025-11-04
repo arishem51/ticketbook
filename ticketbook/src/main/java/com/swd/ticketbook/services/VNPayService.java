@@ -13,7 +13,7 @@ import java.util.Map;
 public class VNPayService {
 
     /**
-     * Create VNPAY payment URL
+     * Create VNPAY payment URL (UC-02.1)
      * 
      * @param orderId Order ID
      * @param amount Payment amount
@@ -21,7 +21,7 @@ public class VNPayService {
      * @param returnUrl Callback URL after payment
      * @return VNPAY payment URL
      */
-    public String createPaymentUrl(Long orderId, BigDecimal amount, String orderInfo, String returnUrl) {
+    public String createPaymentUrl(String orderId, BigDecimal amount, String orderInfo, String returnUrl) {
         // TODO: Implement VNPAY payment URL creation
         // Reference: VNPAY API documentation
         
@@ -91,14 +91,13 @@ public class VNPayService {
     }
 
     /**
-     * Process refund through VNPAY
+     * Process refund through VNPAY (UC-02.5)
      * 
-     * @param transactionId Original transaction ID
+     * @param orderId Original order ID
      * @param amount Refund amount
-     * @param reason Refund reason
-     * @return Refund transaction ID
+     * @return true if refund successful, false otherwise
      */
-    public String processRefund(String transactionId, BigDecimal amount, String reason) {
+    public boolean processRefund(String orderId, BigDecimal amount) {
         // TODO: Implement VNPAY refund API call
         // Reference: VNPAY refund API documentation
         
@@ -110,23 +109,33 @@ public class VNPayService {
             refundParams.put("vnp_Command", "refund");
             refundParams.put("vnp_TmnCode", vnpayConfig.getTmnCode());
             refundParams.put("vnp_TransactionType", "02"); // Full refund
-            refundParams.put("vnp_TxnRef", transactionId);
+            refundParams.put("vnp_TxnRef", orderId);
             refundParams.put("vnp_Amount", String.valueOf(amount.multiply(new BigDecimal(100)).longValue()));
-            refundParams.put("vnp_TransactionDate", "...");
-            refundParams.put("vnp_CreateBy", "admin");
+            refundParams.put("vnp_TransactionDate", new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
+            refundParams.put("vnp_CreateBy", "system");
+            
+            // Build query string and create secure hash
+            String queryString = buildQueryString(refundParams);
+            String secureHash = createSecureHash(queryString);
+            refundParams.put("vnp_SecureHash", secureHash);
             
             // Call VNPAY refund API
-            String response = callVNPayAPI(refundParams);
+            String response = callVNPayAPI(vnpayConfig.getRefundUrl(), refundParams);
             
-            // Parse response and return refund transaction ID
-            return parseRefundResponse(response);
+            // Parse response
+            Map<String, String> responseMap = parseRefundResponse(response);
+            String responseCode = responseMap.get("vnp_ResponseCode");
+            
+            return "00".equals(responseCode); // 00 = success
         } catch (Exception e) {
-            throw new RuntimeException("Failed to process VNPAY refund", e);
+            logger.error("Failed to process VNPAY refund for order: {}", orderId, e);
+            return false;
         }
         */
         
-        // Mock implementation
-        return "REFUND-" + transactionId + "-" + System.currentTimeMillis();
+        // Mock implementation - always returns true for development
+        System.out.println("Processing VNPAY refund for order: " + orderId + ", amount: " + amount);
+        return true;
     }
 
     /**

@@ -116,6 +116,201 @@ public class EmailService {
     }
 
     /**
+     * Send order confirmation with tickets (UC-02.1)
+     * 
+     * @param email Recipient email
+     * @param orderId Order ID
+     * @param eventName Event name
+     * @param totalAmount Total amount paid
+     * @param tickets List of tickets
+     */
+    public void sendOrderConfirmation(String email, String orderId, String eventName, 
+                                     java.math.BigDecimal totalAmount, java.util.List<?> tickets) {
+        logger.info("Sending order confirmation to: {} for order: {}", email, orderId);
+        
+        String subject = "Ticket Book - Order Confirmation #" + orderId;
+        String message = String.format(
+            "Thank you for your order!\n\n" +
+            "Order ID: %s\n" +
+            "Event: %s\n" +
+            "Total Amount: $%s\n" +
+            "Number of Tickets: %d\n\n" +
+            "Your e-tickets are attached to this email.\n" +
+            "Please present the QR codes at the event entrance.\n\n" +
+            "Enjoy the event!",
+            orderId, eventName, totalAmount.toString(), tickets.size()
+        );
+        
+        sendEmail(email, subject, message);
+    }
+
+    /**
+     * Send refund request confirmation (UC-02.5)
+     * 
+     * @param email Customer email
+     * @param requestId Refund request ID
+     * @param eventName Event name
+     * @param refundAmount Refund amount
+     */
+    public void sendRefundRequestConfirmation(String email, Long requestId, String eventName, 
+                                            java.math.BigDecimal refundAmount) {
+        logger.info("Sending refund request confirmation to: {} for request: {}", email, requestId);
+        
+        String subject = "Ticket Book - Refund Request Received #" + requestId;
+        String message = String.format(
+            "Your refund request has been received.\n\n" +
+            "Request ID: %d\n" +
+            "Event: %s\n" +
+            "Refund Amount: $%s\n\n" +
+            "Admin will review your request within 24-48 hours.\n" +
+            "You'll receive a notification once the decision is made.",
+            requestId, eventName, refundAmount.toString()
+        );
+        
+        sendEmail(email, subject, message);
+    }
+
+    /**
+     * Send refund completed notification (UC-02.5)
+     * 
+     * @param email Customer email
+     * @param requestId Refund request ID
+     * @param refundAmount Refund amount
+     */
+    public void sendRefundCompleted(String email, Long requestId, java.math.BigDecimal refundAmount) {
+        logger.info("Sending refund completed notification to: {} for request: {}", email, requestId);
+        
+        String subject = "Ticket Book - Refund Completed #" + requestId;
+        String message = String.format(
+            "Your refund has been processed successfully.\n\n" +
+            "Request ID: %d\n" +
+            "Refund Amount: $%s\n\n" +
+            "The amount will be credited to your original payment method within 3-5 business days.",
+            requestId, refundAmount.toString()
+        );
+        
+        sendEmail(email, subject, message);
+    }
+
+    /**
+     * Send refund rejected notification (UC-02.5)
+     * 
+     * @param email Customer email
+     * @param requestId Refund request ID
+     * @param reason Rejection reason
+     */
+    public void sendRefundRejected(String email, Long requestId, String reason) {
+        logger.info("Sending refund rejection to: {} for request: {}", email, requestId);
+        
+        String subject = "Ticket Book - Refund Request Rejected #" + requestId;
+        String message = String.format(
+            "Your refund request has been reviewed and unfortunately cannot be approved.\n\n" +
+            "Request ID: %d\n" +
+            "Reason: %s\n\n" +
+            "If you have questions, please contact support.",
+            requestId, reason
+        );
+        
+        sendEmail(email, subject, message);
+    }
+
+    /**
+     * Send new support ticket notification to organizer (UC-02.4)
+     * 
+     * @param email Organizer email
+     * @param ticketId Support ticket ID
+     * @param eventName Event name
+     * @param subject Ticket subject
+     * @param customerName Customer name
+     */
+    public void sendNewSupportTicketNotification(String email, Long ticketId, String eventName,
+                                                String subject, String customerName) {
+        logger.info("Sending new support ticket notification to organizer: {}", email);
+        
+        String emailSubject = "Ticket Book - New Support Request #" + ticketId;
+        String message = String.format(
+            "You have received a new support request for your event.\n\n" +
+            "Ticket ID: %d\n" +
+            "Event: %s\n" +
+            "From: %s\n" +
+            "Subject: %s\n\n" +
+            "Please respond to this request within 24-48 hours.",
+            ticketId, eventName, customerName, subject
+        );
+        
+        sendEmail(email, emailSubject, message);
+    }
+
+    /**
+     * Send support request confirmation to customer (UC-02.4)
+     * 
+     * @param email Customer email
+     * @param ticketId Support ticket ID
+     * @param eventName Event name
+     */
+    public void sendSupportRequestConfirmation(String email, Long ticketId, String eventName) {
+        logger.info("Sending support request confirmation to customer: {}", email);
+        
+        String subject = "Ticket Book - Support Request Received #" + ticketId;
+        String message = String.format(
+            "Your support request has been submitted successfully.\n\n" +
+            "Ticket ID: %d\n" +
+            "Event: %s\n\n" +
+            "The event organizer will respond within 24-48 hours.",
+            ticketId, eventName
+        );
+        
+        sendEmail(email, subject, message);
+    }
+
+    /**
+     * Send support response notification to customer (UC-02.4)
+     * 
+     * @param email Customer email
+     * @param ticketId Support ticket ID
+     * @param eventName Event name
+     * @param response Organizer's response
+     */
+    public void sendSupportResponseNotification(String email, Long ticketId, String eventName,
+                                              String response) {
+        logger.info("Sending support response notification to customer: {}", email);
+        
+        String subject = "Ticket Book - Response to Support Request #" + ticketId;
+        String message = String.format(
+            "The event organizer has responded to your support request.\n\n" +
+            "Ticket ID: %d\n" +
+            "Event: %s\n\n" +
+            "Response:\n%s",
+            ticketId, eventName, response
+        );
+        
+        sendEmail(email, subject, message);
+    }
+
+    /**
+     * Send support resolved notification (UC-02.4)
+     * 
+     * @param email Customer email
+     * @param ticketId Support ticket ID
+     * @param eventName Event name
+     */
+    public void sendSupportResolvedNotification(String email, Long ticketId, String eventName) {
+        logger.info("Sending support resolved notification to customer: {}", email);
+        
+        String subject = "Ticket Book - Support Request Resolved #" + ticketId;
+        String message = String.format(
+            "Your support request has been marked as resolved.\n\n" +
+            "Ticket ID: %d\n" +
+            "Event: %s\n\n" +
+            "If your issue has been resolved, please confirm to close the ticket.\n" +
+            "Otherwise, you can reopen it by adding a follow-up comment.",
+            ticketId, eventName
+        );
+        
+        sendEmail(email, subject, message);
+    }
+
+    /**
      * Generic email sending method
      * TODO: Implement actual email sending logic
      * 

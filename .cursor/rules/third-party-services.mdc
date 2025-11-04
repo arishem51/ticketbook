@@ -1,0 +1,117 @@
+# Third-Party Service Implementation Guidelines
+
+## Overview
+This rule defines the standard approach for implementing third-party services and complex logic services in the codebase.
+
+## Rule: Simplified Third-Party Service Implementation
+
+For any implementation involving third-party integrations or complex logic services, follow these guidelines:
+
+### Scope
+This rule applies to:
+- **Email services** (SMTP, SendGrid, etc.)
+- **Payment gateways** (VNPay, Stripe, PayPal, etc.)
+- **SMS services** (Twilio, etc.)
+- **External APIs** (authentication providers, analytics, etc.)
+- **Complex business logic services** with intricate implementations
+
+### Implementation Standard
+
+1. **Method Signature**: Create clear, descriptive method names that explain the functionality
+2. **Method Body**: Comment out or stub the implementation body
+3. **Documentation**: Add comments describing what the method should do
+4. **Return Values**: Provide mock/placeholder return values if necessary for compilation
+
+### Example Format
+
+```java
+public class EmailService {
+    
+    /**
+     * Sends a verification email to the user with a verification code
+     * @param email The recipient's email address
+     * @param verificationCode The code to be sent
+     * @return true if email sent successfully, false otherwise
+     */
+    public boolean sendVerificationEmail(String email, String verificationCode) {
+        // TODO: Implement email sending logic using SMTP/SendGrid
+        // - Configure email template
+        // - Set recipient and subject
+        // - Send email via third-party service
+        return true; // Mock success response
+    }
+    
+    /**
+     * Sends a password reset email with a reset link
+     * @param email The recipient's email address
+     * @param resetToken The password reset token
+     */
+    public void sendPasswordResetEmail(String email, String resetToken) {
+        // TODO: Implement password reset email logic
+        // - Generate reset link with token
+        // - Send formatted email
+    }
+}
+```
+
+```java
+public class VNPayService {
+    
+    /**
+     * Creates a payment URL for VNPay gateway
+     * @param amount The payment amount in VND
+     * @param orderInfo Description of the order
+     * @param returnUrl The URL to return after payment
+     * @return The VNPay payment URL
+     */
+    public String createPaymentUrl(Long amount, String orderInfo, String returnUrl) {
+        // TODO: Implement VNPay payment URL generation
+        // - Create payment parameters
+        // - Generate secure hash
+        // - Build VNPay URL with parameters
+        return "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?..."; // Mock URL
+    }
+    
+    /**
+     * Validates the VNPay payment callback response
+     * @param params The callback parameters from VNPay
+     * @return true if the payment is valid and successful
+     */
+    public boolean validatePaymentCallback(Map<String, String> params) {
+        // TODO: Implement VNPay callback validation
+        // - Verify secure hash
+        // - Check response code
+        // - Validate transaction data
+        return true; // Mock validation success
+    }
+}
+```
+
+### Benefits
+
+- **Focus on Architecture**: Keep focus on system design and structure
+- **Reduce Dependencies**: Avoid dealing with actual third-party API complexity during development
+- **Faster Iteration**: Quickly prototype features without waiting for external service setup
+- **Clear Contracts**: Method signatures serve as clear contracts for what the service should do
+- **Easy Testing**: Can be easily mocked or replaced with actual implementation later
+
+### When to Apply
+
+✅ **Apply this rule when:**
+- Setting up initial project structure
+- Prototyping features
+- The third-party service requires complex configuration
+- External credentials/API keys are not available
+- Focus is on business logic rather than integration details
+
+❌ **Do NOT apply when:**
+- Implementing critical production code
+- Third-party integration is the main feature being developed
+- Testing actual integration behavior is required
+
+## Related Guidelines
+
+- Keep method names descriptive and self-documenting
+- Add JavaDoc comments explaining parameters and return values
+- Include TODO comments indicating what actual implementation should do
+- Provide realistic mock return values for testing purposes
