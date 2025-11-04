@@ -11,13 +11,12 @@ import java.time.LocalDateTime;
  * Entity representing password reset tokens.
  * Used for UC-01.3: Reset Password functionality.
  * Tokens expire after 15 minutes.
- * Note: Named "FinancialResetToken" in ERD but used for password resets.
  */
 @Entity
 @Table(name = "password_reset_tokens")
 @Data
 @NoArgsConstructor
-public class FinancialResetToken {
+public class PasswordResetToken {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -47,7 +46,7 @@ public class FinancialResetToken {
     private LocalDateTime usedAt;
 
     // Custom constructor
-    public FinancialResetToken(User user, String tokenValue) {
+    public PasswordResetToken(User user, String tokenValue) {
         this.user = user;
         this.tokenValue = tokenValue;
         this.createdAt = LocalDateTime.now();
@@ -79,3 +78,4 @@ public class FinancialResetToken {
         return LocalDateTime.now().isAfter(expiryTime);
     }
 }
+

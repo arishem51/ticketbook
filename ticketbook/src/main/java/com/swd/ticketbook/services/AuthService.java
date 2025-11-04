@@ -1,10 +1,10 @@
 package com.swd.ticketbook.services;
 
 import com.swd.ticketbook.dto.auth.*;
-import com.swd.ticketbook.entities.FinancialResetToken;
+import com.swd.ticketbook.entities.PasswordResetToken;
 import com.swd.ticketbook.entities.User;
 import com.swd.ticketbook.enums.UserRole;
-import com.swd.ticketbook.repositories.FinancialResetTokenRepository;
+import com.swd.ticketbook.repositories.PasswordResetTokenRepository;
 import com.swd.ticketbook.repositories.UserRepository;
 import com.swd.ticketbook.utils.PasswordEncoderUtil;
 import jakarta.servlet.http.HttpServletRequest;
@@ -40,7 +40,7 @@ public class AuthService {
     private VerificationCodeService verificationCodeService;
 
     @Autowired
-    private FinancialResetTokenRepository resetTokenRepository;
+    private PasswordResetTokenRepository resetTokenRepository;
 
     /**
      * UC-01.1: Register Account with Email/Phone
@@ -204,7 +204,7 @@ public class AuthService {
 
         // Generate reset token
         String resetToken = UUID.randomUUID().toString();
-        FinancialResetToken token = new FinancialResetToken(user, resetToken);
+        PasswordResetToken token = new PasswordResetToken(user, resetToken);
         resetTokenRepository.save(token);
 
         // Send reset link
@@ -234,7 +234,7 @@ public class AuthService {
         }
 
         // Validate token
-        Optional<FinancialResetToken> tokenOpt = resetTokenRepository.findValidToken(
+        Optional<PasswordResetToken> tokenOpt = resetTokenRepository.findValidToken(
             request.getToken(), 
             LocalDateTime.now()
         );
@@ -243,7 +243,7 @@ public class AuthService {
             throw new IllegalArgumentException("Reset link expired. Please request a new one.");
         }
 
-        FinancialResetToken token = tokenOpt.get();
+        PasswordResetToken token = tokenOpt.get();
         User user = token.getUser();
 
         // FR1: Encode new password with MD5
