@@ -115,6 +115,147 @@ flowchart TD
   TK --> OBJ[Object Storage<br/>QR images]
 ```
 
+## VI.2 Applying Service Discovery Pattern (Kubernetes-based microservices)
+
+### 1. Problem & Requirement
+
+- Non-functional driver: **NF-05 Scalability** and **High Availability**. As we horizontally scale services like `order`, `payment`, and `ticket` to handle spikes (e.g., flash sales), instance IPs are ephemeral.
+- In a growing system with multiple independently deployable services (Auth, Event, Order, Payment, Ticket, Notification), we must support:
+  - Dynamic endpoint resolution without hardcoding IPs/ports
+  - Health-aware routing to only-ready instances
+  - Zero-downtime rolling updates and auto-scaling (HPA)
+  - Multi-environment isolation (dev/stage/prod) with consistent naming
+- Without discovery, client modules (or the API Gateway) become brittle, requiring frequent redeploys when topology changes.
+
+### 2. Service Discovery-Based Solution
+
+Integrate a dedicated discovery mechanism that decouples clients from instance addresses.
+
+- Kubernetes-first approach (recommended for the alternate microservice + K8s target):
+  - Use native **Kubernetes Services** for stable virtual IPs and DNS names (ClusterIP/Headless) backed by **Endpoints**.
+  - **CoreDNS** provides DNS-based service discovery: `http://order.default.svc.cluster.local`.
+  - Combine with **readiness/liveness probes** so only healthy Pods receive traffic.
+  - External exposure via **Ingress** or **Gateway API**; internal calls use `*.svc.cluster.local`.
+  - Optional: **Service Mesh** (e.g., Istio) for advanced discovery, mTLS, traffic shifting, and circuit breaking.
+
+- Alternative registries (non-Kubernetes or hybrid):
+  - **Consul**: Agent-based health checks, KV, multi-datacenter, DNS/HTTP API
+  - **Netflix Eureka**: Java-first client-side discovery for Spring Cloud Netflix stacks
+  - Discovery abstraction: implement via sidecar/adapter so the app code remains registry-agnostic
+
+Client resolution patterns:
+- API Gateway or services call others using DNS names (e.g., `http://payment:8080`).
+- In non-K8s, use registry client libraries (Eureka/Consul) with retry/timeouts.
+
+Alignment with @usecase.mdc:
+- Supports NF-06 Scalability and high availability by enabling horizontal scaling and rolling updates.
+- Enhances reliability for critical flows (order reservation FR16, payment, ticket issuance FR6) through health-aware routing.
+- Facilitates independent scaling per domain per the microservices boundaries.
+
+### 3. Supporting Diagrams
+
+#### 3.1 Deployment Diagram (Kubernetes with discovery registry)
+
+```mermaid
+flowchart LR
+  subgraph K8s[ Kubernetes Cluster ]
+    IG[Ingress / Gateway API]
+    IG --> GW[API Gateway (Deployment)]
+
+    subgraph NS[Namespace: default]
+      AU_DEP[Deployment: auth]
+      EV_DEP[Deployment: event]
+      OR_DEP[Deployment: order]
+      PY_DEP[Deployment: payment]
+      TK_DEP[Deployment: ticket]
+      NF_DEP[Deployment: notification]
+
+      AU_SVC[(Service: auth)]
+      EV_SVC[(Service: event)]
+      OR_SVC[(Service: order)]
+      PY_SVC[(Service: payment)]
+      TK_SVC[(Service: ticket)]
+      NF_SVC[(Service: notification)]
+
+      AU_DEP --- AU_SVC
+      EV_DEP --- EV_SVC
+      OR_DEP --- OR_SVC
+      PY_DEP --- PY_SVC
+      TK_DEP --- TK_SVC
+      NF_DEP --- NF_SVC
+
+      HPA_OR[HPA: order] --- OR_DEP
+      HPA_PY[HPA: payment] --- PY_DEP
+      HPA_TK[HPA: ticket] --- TK_DEP
+
+      %% Discovery plane
+      DNS[(CoreDNS)]
+      DNS --- AU_SVC
+      DNS --- EV_SVC
+      DNS --- OR_SVC
+      DNS --- PY_SVC
+      DNS --- TK_SVC
+      DNS --- NF_SVC
+    end
+
+    GW --> AU_SVC
+    GW --> EV_SVC
+    GW --> OR_SVC
+    GW --> PY_SVC
+    GW --> TK_SVC
+    GW --> NF_SVC
+  end
+
+  PY_DEP --> VNP[VNPAY]
+```
+
+#### 3.2 Updated Component Diagram (with Discovery Service)
+
+```mermaid
+flowchart TB
+  Client --> GW[API Gateway]
+  GW --> Auth
+  GW --> Event
+  GW --> Order
+  GW --> Payment
+  GW --> Ticket
+  GW --> Notification
+
+  subgraph Discovery[Discovery Service]
+    CDNS[CoreDNS + K8s Service Registry]
+  end
+
+  Auth -. resolves .-> Discovery
+  Event -. resolves .-> Discovery
+  Order -. resolves .-> Discovery
+  Payment -. resolves .-> Discovery
+  Ticket -. resolves .-> Discovery
+  Notification -. resolves .-> Discovery
+
+  note right of Discovery: Stable DNS names (svc.cluster.local)
+```
+
+#### 3.3 Service Discovery Sequence (DNS-based lookup)
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant OR as Order Service Pod
+  participant DNS as CoreDNS
+  participant PY as payment.svc.cluster.local
+
+  OR->>DNS: DNS query A/AAAA for payment.default.svc.cluster.local
+  DNS-->>OR: Endpoints VIP/Pod IPs (only Ready)
+  OR->>PY: HTTPS request (timeout+retry)
+  PY-->>OR: 200 OK
+```
+
+Notes:
+- Health probes ensure only Ready Pods are in Endpoints; rolling updates swap endpoints seamlessly.
+- For stateful components, prefer Headless Services (`clusterIP: None`) and stable network identities via StatefulSets.
+- If extending beyond K8s, introduce a discovery adapter to support Consul/Eureka without changing business code.
+
+
 ```mermaid
 flowchart LR
   subgraph K8s[Kubernetes]
