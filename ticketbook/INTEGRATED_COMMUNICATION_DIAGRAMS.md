@@ -64,6 +64,196 @@ graph LR
 
 ---
 
+## Integrated Communication Diagram (ICD)
+### Complete System Integration - All Use Cases
+
+This diagram integrates all communication diagrams from UC-01 through UC-04, showing high-level subsystems and their key message interactions. The diagram follows the integration order: UC-01 (Authentication) → UC-02 (Ordering) → UC-03 (Organizer) → UC-04 (Admin).
+
+```mermaid
+graph TB
+    subgraph "External Users & Systems"
+        CUST["«external user»<br/>Customer"]
+        ORG_USER["«external user»<br/>Organizer"]
+        ADMIN_USER["«external user»<br/>Admin"]
+        FE["«service»<br/>Frontend Application"]
+        VNPAY_EXT["«service»<br/>VNPay Gateway"]
+        EMAIL_EXT["«service»<br/>Email Provider"]
+        SMS_EXT["«service»<br/>SMS Provider"]
+    end
+
+    subgraph "**Ticket Booking System**"
+        subgraph "Authentication Subsystem"
+            AC["«state dependent control»<br/>AuthController"]
+            AS["«service»<br/>AuthService"]
+            SS["«service»<br/>SessionService"]
+            VS["«service»<br/>VerificationCodeService"]
+            ES["«service»<br/>EmailService"]
+            SMSS["«service»<br/>SMSService"]
+            UR["«entity»<br/>UserRepository"]
+        end
+
+        subgraph "Order Management Subsystem"
+            OC["«state dependent control»<br/>OrderController"]
+            OS["«service»<br/>OrderService"]
+            CHKC["«state dependent control»<br/>CheckInController"]
+            CHKS["«service»<br/>CheckInService"]
+            RC["«state dependent control»<br/>RefundController"]
+            RS["«service»<br/>RefundService"]
+            SC["«state dependent control»<br/>SupportController"]
+            SSVC["«service»<br/>SupportService"]
+            VNS["«service»<br/>VNPayService"]
+            QRS["«service»<br/>QRCodeService"]
+            OR["«entity»<br/>OrderRepository"]
+            TR["«entity»<br/>TicketRepository"]
+            TTR["«entity»<br/>TicketTypeRepository"]
+        end
+
+        subgraph "Event Management Subsystem"
+            ORGC["«state dependent control»<br/>OrganizerController"]
+            ORGS["«service»<br/>OrganizerService"]
+            EVS["«service»<br/>EventService"]
+            STS["«service»<br/>StatisticsService"]
+            WDS["«service»<br/>WithdrawalService"]
+            ER["«entity»<br/>EventRepository"]
+            OPR["«entity»<br/>OrganizerProfileRepository"]
+            WR["«entity»<br/>WithdrawalRequestRepository"]
+        end
+
+        subgraph "Admin Management Subsystem"
+            ADC["«state dependent control»<br/>AdminController"]
+            ADMS["«service»<br/>AdminService"]
+            ALS["«service»<br/>AuditLogService"]
+        end
+
+        subgraph "Data Access Layer"
+            DB["«entity»<br/>Database"]
+        end
+    end
+
+    %% Customer Interactions
+    CUST -->|Customer Input<br/>Register/Login/Order| FE
+    FE -->|Authentication Requests| AC
+    FE -->|Order Requests| OC
+    FE -->|Refund Requests| RC
+    FE -->|Support Requests| SC
+    
+    %% Organizer Interactions
+    ORG_USER -->|Organizer Input<br/>Create Event/Statistics| FE
+    FE -->|Organizer Requests| ORGC
+    
+    %% Admin Interactions
+    ADMIN_USER -->|Admin Input<br/>Approvals/Management| FE
+    FE -->|Admin Requests| ADC
+    
+    %% Authentication Flow
+    AC -->|Register/Login/Profile| AS
+    AS -->|Generate Code| VS
+    AS -->|Send Verification| ES
+    AS -->|Send Verification| SMSS
+    AS -->|Create Session| SS
+    AS -->|User Data| UR
+    SS -->|Session Data| UR
+    UR -->|Persist Users/Sessions| DB
+    
+    %% Order Flow
+    OC -->|Create Order/Payment| OS
+    OS -->|Validate Event| ER
+    OS -->|Reserve Tickets| TTR
+    OS -->|Payment URL| VNS
+    OS -->|Generate QR Codes| QRS
+    OS -->|Save Order| OR
+    OS -->|Save Tickets| TR
+    OS -->|Send Confirmation| ES
+    VNS -->|Payment Transaction| VNPAY_EXT
+    VNPAY_EXT -.->|Payment Callback| VNS
+    OR -->|Persist Orders| DB
+    TR -->|Persist Tickets| DB
+    TTR -->|Persist Ticket Types| DB
+    
+    %% Check-In Flow
+    CHKC -->|Scan QR Code| CHKS
+    CHKS -->|Validate Ticket| TR
+    CHKS -->|Log Check-In| ALS
+    TR -->|Update Ticket Status| DB
+    
+    %% Refund Flow
+    RC -->|Submit Refund| RS
+    RS -->|Validate Ticket| TR
+    RS -->|Process Refund| VNS
+    RS -->|Save Refund Info| DB
+    RS -->|Send Confirmation| ES
+    VNS -->|Refund Transaction| VNPAY_EXT
+    
+    %% Support Flow
+    SC -->|Submit Support| SSVC
+    SSVC -->|Get Event| ER
+    SSVC -->|Save Ticket| DB
+    SSVC -->|Notify Organizer| ES
+    
+    %% Event Management Flow
+    ORGC -->|Create Event| EVS
+    ORGC -->|Statistics| STS
+    ORGC -->|Withdrawal| WDS
+    ORGC -->|KYC Submission| ORGS
+    EVS -->|Validate Organizer| ORGS
+    EVS -->|Save Event| ER
+    EVS -->|Notify Admin| ADMS
+    EVS -->|Save Ticket Types| TTR
+    STS -->|Event Data| ER
+    STS -->|Order Data| OR
+    STS -->|Ticket Data| TR
+    WDS -->|Organizer Profile| OPR
+    WDS -->|Event Data| ER
+    WDS -->|Save Withdrawal| WR
+    WDS -->|Notify Organizer| ES
+    ORGS -->|Save Profile| OPR
+    ORGS -->|Notify Admin| ADMS
+    ER -->|Persist Events| DB
+    OPR -->|Persist Profiles| DB
+    WR -->|Persist Withdrawals| DB
+    
+    %% Admin Management Flow
+    ADC -->|User Management| ADMS
+    ADC -->|Event Management| ADMS
+    ADC -->|KYC Approval| ADMS
+    ADC -->|Refund Approval| ADMS
+    ADC -->|Withdrawal Approval| ADMS
+    ADMS -->|User Data| UR
+    ADMS -->|Event Data| ER
+    ADMS -->|Organizer Data| OPR
+    ADMS -->|Update Event Status| EVS
+    ADMS -->|Process Refund| RS
+    ADMS -->|Process Withdrawal| WDS
+    ADMS -->|Statistics| STS
+    ADMS -->|Log Actions| ALS
+    ADMS -->|Notify Users| ES
+    ALS -->|Persist Logs| DB
+    
+    %% External Service Integration
+    ES -->|Send Email| EMAIL_EXT
+    SMSS -->|Send SMS| SMS_EXT
+    
+    %% Styling
+    style CUST fill:#e1f5ff
+    style ORG_USER fill:#e1f5ff
+    style ADMIN_USER fill:#e1f5ff
+    style FE fill:#fff4e1
+    style VNPAY_EXT fill:#ff9800
+    style EMAIL_EXT fill:#2196F3
+    style SMS_EXT fill:#2196F3
+    style DB fill:#9C27B0
+```
+
+**Key Points:**
+- **High-level subsystems** organized by major functional areas (Authentication, Order Management, Event Management, Admin Management)
+- **UML stereotypes** used to classify components («service», «entity», «state dependent control», «external user»)
+- **Descriptive message labels** showing major interaction patterns, not individual method calls
+- **All objects integrated** from UC-01 through UC-04, with shared objects shown once
+- **External systems** clearly separated from internal subsystems
+- **Main communication paths** highlighted, showing the flow of data and control through the system
+
+---
+
 ## III. Analysis Models - Interaction Diagrams
 
 ### III.1.1. Sequence Diagrams
