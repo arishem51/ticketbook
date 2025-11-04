@@ -64,3 +64,132 @@ This solution directly addresses the limitations:
 Note: This file documents intent and scope only. No code changes are implied.
 
 
+
+#### Mermaid Diagrams (Lean per use case)
+
+```mermaid
+%%{init: {"flowchart": {"curve": "linear", "nodeSpacing": 90, "rankSpacing": 160}}}%%
+flowchart TD
+  %% Clients
+  A[Web or Mobile Client] -->|HTTPS + JWT| G[API Gateway]
+
+  %% MVP services per use case
+  G --> AU[Auth Service]
+  G --> EV[Event Service]
+  G --> OR[Order Service]
+  G --> PY[Payment Service]
+  G --> TK[Ticket Service]
+  G --> NF[Notification Service]
+
+  %% Stateless auth and minimal Redis usage
+  AU -->|issue/verify JWT| A
+  subgraph RS[Redis]
+    RBL[JWT blacklist]
+    RRT[Refresh tokens]
+    RH[15m holds & locks]
+  end
+  AU -.-> RS
+  OR -.-> RH
+  G -.-> RRL[Rate limit]
+  RRL -.-> RS
+
+  %% Kafka bus (minimal topics)
+  subgraph KB[Kafka]
+    KT[Topics:<br/>orders.events · payments.events · tickets.events]
+  end
+  OR <--> KB
+  PY <--> KB
+  TK <--> KB
+  NF <--> KB
+
+  %% Per-service DBs
+  EV --- DEV[(Event DB)]
+  OR --- DOR[(Order DB)]
+  PY --- DPY[(Payment DB)]
+  TK --- DTK[(Ticket DB)]
+
+  %% External integrations
+  PY --> VNP[VNPAY]
+  NF --> EM[Email]
+  NF --> SMS[SMS]
+  TK --> OBJ[Object Storage<br/>QR images]
+```
+
+```mermaid
+flowchart LR
+  subgraph K8s[Kubernetes]
+    IG[Ingress] --> GW[API Gateway]
+    GW --> DPL_AU[Deployment: auth]
+    GW --> DPL_EV[Deployment: event]
+    GW --> DPL_OR[Deployment: order]
+    GW --> DPL_PY[Deployment: payment]
+    GW --> DPL_TK[Deployment: ticket]
+    GW --> DPL_NF[Deployment: notification]
+
+    HPA_OR[HPA: order] --- DPL_OR
+    HPA_PY[HPA: payment] --- DPL_PY
+    HPA_TK[HPA: ticket] --- DPL_TK
+
+    KF[(Kafka)]
+    RD[(Redis)]
+
+    DPL_OR <--> KF
+    DPL_PY <--> KF
+    DPL_TK <--> KF
+    DPL_NF <--> KF
+
+    DPL_AU <--> RD
+    DPL_OR <--> RD
+  end
+```
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant C as Client
+  participant GW as API Gateway
+  participant OR as Order Service
+  participant KB as Kafka
+  participant PY as Payment Service
+  participant TK as Ticket Service
+  participant NF as Notification Service
+
+  Note over C,NF: Start of checkout saga
+
+  C->>GW: POST /orders
+  GW->>OR: createOrder(request, JWT)
+  activate OR
+  OR->>OR: Local TX reserve tickets
+  OR->>OR: Set status PendingPayment
+  OR-->>KB: OrderCreated
+
+  PY-->>KB: (consumes) OrderCreated
+  activate PY
+  PY->>PY: Local TX create payment with VNPAY
+  PY-->>KB: PaymentRequested
+  deactivate PY
+  activate NF
+  NF-->>KB: (consumes) PaymentRequested → send link
+  deactivate NF
+
+  C->>VNPAY: Complete payment
+  PY-->>KB: PaymentSucceeded or PaymentFailed
+
+  OR-->>KB: (consumes) PaymentSucceeded → mark Confirmed
+  activate TK
+  TK-->>KB: (consumes) PaymentSucceeded → issue tickets + QR
+  TK-->>KB: TicketsIssued
+  deactivate TK
+  activate NF
+  NF-->>KB: (consumes) TicketsIssued → deliver QR
+  deactivate NF
+
+  OR-->>KB: (consumes) PaymentFailed → release reservation
+  OR-->>KB: (consumes) PaymentFailed → mark Cancelled
+  activate NF
+  NF-->>KB: (consumes) PaymentFailed → notify failure
+  deactivate NF
+
+  deactivate OR
+  Note over C,NF: End of checkout saga
+```
