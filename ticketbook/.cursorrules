@@ -1,0 +1,517 @@
+# Ticket Booking System - Implementation Rules
+
+## PROJECT OVERVIEW
+This is a Spring Boot ticket booking platform with three user roles: Customer, Verified Organizer, and Admin.
+Tech stack: Java/Spring Boot, JPA/Hibernate, MySQL, VNPAY payment gateway.
+
+---
+
+## 1. AUTHENTICATION & USER MANAGEMENT
+
+### 1.1 Registration (UC-01.1)
+- **ALWAYS** support two registration methods: email/phone + password OR Google OAuth
+- **ALWAYS** hash passwords with MD5 (FR1) - use `PasswordEncoderUtil`
+- **ALWAYS** send verification code via SMS/email before account creation
+- **ENFORCE** password ≥8 characters with letters and numbers (FR10)
+- **ENFORCE** email/phone must be unique across all users (FR9)
+- **ALWAYS** assign "Customer" role to new users (FR11) - NEVER assign Organizer or Admin
+- **VALIDATE** reject duplicate email/phone with clear error message
+- **IMPLEMENT** verification code expires after 5 minutes, max 3 attempts
+
+### 1.2 Login (UC-01.2)
+- **ALWAYS** support email/phone + password OR Google OAuth login
+- **ENFORCE** lock account for 30 minutes after 5 failed login attempts (FR12)
+- **ALWAYS** create session token valid for 24 hours
+- **ALWAYS** verify password using MD5 hash comparison (FR1)
+- **SECURITY** show generic error "Invalid credentials" - don't reveal which field is wrong
+
+### 1.3 Password Management (UC-01.3, UC-01.7)
+- **ALWAYS** require verification code to email/phone for password reset
+- **ENFORCE** reset token expires after 15 minutes
+- **ENFORCE** change password requires current password verification
+- **ENFORCE** new password must differ from current password
+- **ALWAYS** terminate all active sessions after password change
+- **VALIDATE** enforce password strength rules (FR10)
+
+### 1.4 Profile Management (UC-01.4, UC-01.5)
+- **ALLOW** users to view/edit name, email, phone
+- **ENFORCE** changing email/phone requires verification code (FR9)
+- **VALIDATE** reject duplicate email/phone
+
+### 1.5 Account Deletion (UC-01.6)
+- **ENFORCE** only Customers can self-delete accounts (FR13)
+- **BLOCK** Admin and Organizer accounts from self-deletion
+- **ALWAYS** use soft delete - mark as "deleted" not actual deletion
+- **BLOCK** deletion if pending orders exist
+- **REQUIRE** password confirmation before deletion
+- **VALIDATE** check user role before allowing deletion
+
+---
+
+## 2. ORGANIZER VERIFICATION
+
+### 2.1 KYC Process (UC-03.1 AF 3.1.1)
+- **REQUIRE** Customers complete KYC verification before creating events
+- **COLLECT** organization name, business registration, tax ID, ID documents, bank account
+- **ALWAYS** submit verification request to Admin for approval
+- **ENFORCE** only upgrade to "Verified Organizer" role after Admin approval (FR26, FR11)
+- **DISPLAY** verification status in user account settings
+- **VALIDATE** all required documents uploaded (<10MB, PDF/JPG/PNG only)
+- **REQUIRE** bank account information for revenue withdrawal
+
+---
+
+## 3. EVENT MANAGEMENT
+
+### 3.1 Create Event (UC-03.1)
+- **ENFORCE** only "Verified Organizer" role can create events (FR26, FR17)
+- **ALWAYS** generate unique event ID automatically using system (FR2)
+- **ALWAYS** set new event status to "Pending Approval"
+- **REQUIRE** at least 1 ticket type with price > 0
+- **VALIDATE** event date/time must be in future
+- **ALLOW** draft save without Admin submission
+- **ALWAYS** notify Admin when event submitted for approval
+- **ENFORCE** only publish event after Admin approval (status = "Active")
+- **VALIDATE** all required fields: name, description, venue, dates, ticket types
+- **VALIDATE** event start date before end date
+- **VALIDATE** ticket sale period is valid
+- **LOG** event creation and approval actions (FR20)
+
+### 3.2 Update Event (UC-03.2)
+- **ENFORCE** only event creator (Verified Organizer) can request updates (FR17, FR26)
+- **BLOCK** updates to events that already occurred (FR15)
+- **BLOCK** ticket price changes after sales started (FR3)
+- **REQUIRE** Admin approval for all updates
+- **REQUIRE** organizer to submit proposed changes with justification
+- **ALLOW** Admin to review and apply changes or reject with reason
+- **VALIDATE** at least one field must be modified
+- **REQUIRE** justification text for changes
+- **BLOCK** price changes if sales started
+- **LOG** update requests and Admin decisions (FR20)
+
+### 3.3 Event Statistics (UC-03.3)
+- **ENFORCE** only Verified Organizer can view their event statistics (FR17, FR26)
+- **DISPLAY** tickets sold, revenue, sales trends, check-in rate, demographics
+- **UPDATE** metrics every 15 minutes (every 30 seconds for ongoing events)
+- **ALLOW** export to PDF/CSV/Excel
+- **ALLOW** custom date range and filtering
+- **ANONYMIZE** customer personal data in exports
+
+---
+
+## 4. TICKET ORDERING & PAYMENT
+
+### 4.1 Order Process (UC-02.1)
+- **ENFORCE** customer can only have ONE active pending order across ALL events (FR5)
+- **REQUIRE** if pending order exists, offer to resume or cancel it first
+- **ALWAYS** generate unique order ID (FR4)
+- **REQUIRE** phone number during booking (mandatory even if registered with email) (FR25)
+- **REQUIRE** recipient info (name, phone, email, address, notes) before payment (FR25)
+- **ENFORCE** reserve tickets for exactly 15 minutes from payment screen (FR16)
+- **IMPLEMENT** timer runs continuously in background even if browser closed
+- **ENFORCE** after timeout, auto-cancel order and release tickets
+- **INTEGRATE** VNPAY payment gateway only
+- **ALWAYS** auto-generate unique QR code for each ticket immediately after payment success (FR6)
+- **IMPLEMENT** order status flow: "Pending Payment" → "Confirmed" → "Used"/"Refunded"
+- **ALLOW** "Cancel Payment" to return to payment selection (keeps reservation active)
+- **ALLOW** "Cancel Order" at payment screen (releases tickets and stops timer)
+- **VALIDATE** ticket availability before reservation
+- **ENFORCE** max tickets per order set by organizer (FR14)
+- **VALIDATE** phone number format (FR22)
+- **VALIDATE** recipient information completeness (FR22)
+- **LOG** order creation, payment, cancellation (FR20)
+
+### 4.2 View Tickets (UC-02.2)
+- **DISPLAY** all customer's orders with tickets and QR codes
+- **SHOW** order status: Confirmed, Used, Cancelled, Refunded
+- **ALLOW** download as PDF
+- **ENFORCE** each QR code is unique and single-use (FR6)
+
+---
+
+## 5. CHECK-IN
+
+### 5.1 QR Code Validation (UC-02.3)
+- **VALIDATE** QR code format and uniqueness (FR6)
+- **VERIFY** ticket status is "Confirmed" (not Pending/Cancelled/Refunded)
+- **VERIFY** ticket not already used (no prior check-in timestamp) (FR6)
+- **VERIFY** current date/time is within event period
+- **UPDATE** mark ticket as "Used" with timestamp after successful check-in
+- **ENFORCE** each QR code can only be used ONCE (FR6)
+- **REJECT** refunded/cancelled tickets (FR8)
+- **DISPLAY** specific rejection reasons (already used, not confirmed, wrong date, etc.)
+- **LOG** all check-in attempts including failures (FR20)
+
+---
+
+## 6. REFUNDS
+
+### 6.1 Refund Request (UC-02.5)
+- **ENFORCE** only allow refunds if event organizer's policy permits (FR7)
+- **REQUIRE** ticket must not be used for check-in
+- **REQUIRE** refund within allowed timeframe
+- **REQUIRE** event must not have occurred yet
+- **REQUIRE** refund reason from customer (FR22)
+- **ENFORCE** all refunds require Admin approval (FR7)
+- **ALLOW** Admin to approve full or partial refund
+- **INTEGRATE** process refund through VNPAY after approval
+- **UPDATE** mark ticket as "Refunded" and invalidate for check-in (FR8)
+- **IMPLEMENT** refund status: "Pending Admin Review" → "Approved - Processing" → "Completed" or "Rejected"
+- **ENFORCE** only one pending refund request per ticket
+- **BLOCK** refund if ticket already used
+- **BLOCK** refund if outside refund period
+- **BLOCK** duplicate refund requests
+- **LOG** refund request, Admin decision, VNPAY transaction (FR20)
+
+---
+
+## 7. SUPPORT REQUESTS
+
+### 7.1 Submit Support (UC-02.4)
+- **ROUTE** customer support requests to specific event's Organizer (not Admin)
+- **GENERATE** unique support ticket ID
+- **REQUIRE** category, subject, description (FR22)
+- **ALLOW** optional file attachments (<10MB, JPG/PNG/PDF only)
+- **IMPLEMENT** status: "Pending" → "In Progress" → "Resolved" → "Closed"
+- **NOTIFY** Organizer of new support request
+- **ALLOW** customer to view request history and add follow-ups
+- **AUTO-CLOSE** after 7 days if customer doesn't confirm resolution
+- **VALIDATE** required fields before submission (FR22)
+
+---
+
+## 8. REVENUE WITHDRAWAL
+
+### 8.1 Organizer Withdrawal (UC-03.4)
+- **ENFORCE** only Verified Organizer can request withdrawal (FR17, FR26)
+- **DISPLAY** available revenue (total - platform fees)
+- **BLOCK** withdrawal if event not completed or pending refunds exist
+- **REQUIRE** verified bank account on file
+- **ENFORCE** minimum withdrawal amount (e.g., $50)
+- **REQUIRE** all withdrawals need Admin approval
+- **ENFORCE** only one pending withdrawal request at a time
+- **ALLOW** partial withdrawal
+- **PROCESS** bank transfer after Admin approval
+- **VALIDATE** minimum amount threshold
+- **VALIDATE** bank account exists
+- **CHECK** for pending refunds before withdrawal
+- **LOG** withdrawal requests and Admin approvals (FR20)
+
+---
+
+## 9. ADMIN FUNCTIONS
+
+### 9.1 User Management (UC-04.1 - 04.5)
+- **ALLOW** Admin to view all user accounts (FR17, FR18)
+- **ALLOW** Admin to view detailed user information (FR17)
+- **ALLOW** Admin to edit user account details (FR17, FR23)
+- **ALLOW** Admin to change user status: Active/Inactive/Suspended (FR21, FR23)
+- **ALLOW** Admin to soft delete user accounts (mark as deleted) (FR19, FR23)
+- **REQUIRE** confirmation for destructive actions (FR23)
+- **IMPLEMENT** search/filter by status, date, email, phone
+- **VALIDATE** input during edits (FR22)
+- **PREVENT** invalid status transitions
+- **LOG** all Admin actions on user accounts (FR20)
+
+### 9.2 Event Management (UC-04.6 - 04.10)
+- **ALLOW** Admin to view all events (FR17, FR18)
+- **ALLOW** Admin to view detailed event information (FR17)
+- **ALLOW** Admin to edit event details (FR17, FR23)
+- **ALLOW** Admin to change event status: Active/Inactive/Suspended (FR21, FR23)
+- **ALLOW** Admin to soft delete events (mark as deleted) (FR19, FR23)
+- **REQUIRE** Admin approval for new events before they go live
+- **REQUIRE** Admin approval for organizer update requests
+- **REQUIRE** confirmation for destructive actions (FR23)
+- **VALIDATE** input during edits (FR22)
+- **LOG** all Admin actions on events (FR20)
+
+### 9.3 Refund & Withdrawal Approval
+- **REQUIRE** Admin to review and approve/reject all refund requests (FR7)
+- **ALLOW** Admin to approve full or partial refunds with reason
+- **REQUIRE** Admin to review and approve all organizer withdrawal requests
+- **REQUIRE** Admin to provide rejection reasons when declining requests
+- **LOG** all approval/rejection decisions (FR20)
+
+---
+
+## 10. CROSS-CUTTING RULES
+
+### 10.1 Security & Authentication
+- **ALWAYS** hash passwords with MD5 (FR1)
+- **ENFORCE** role-based access control (FR17)
+- **REQUIRE** active authenticated session for privileged actions (FR18)
+- **VALIDATE** user session on every request
+- **SECURITY** show generic error messages - don't expose system details
+
+### 10.2 Data Validation (FR22)
+- **VALIDATE** email format (RFC 5322)
+- **VALIDATE** phone number format (international standards)
+- **VALIDATE** date/time (valid dates, future dates where required)
+- **VALIDATE** file uploads (size, format, content type)
+- **VALIDATE** uniqueness constraints (email, phone, event ID, order ID, QR code)
+- **SANITIZE** all user input to prevent injection attacks
+- **DISPLAY** specific validation errors to guide users
+
+### 10.3 Audit Logging (FR20)
+- **LOG** all critical actions with:
+  - User ID (who performed action)
+  - Timestamp (when)
+  - Action type (what)
+  - Affected records (which data)
+  - IP address (where from)
+  - Result (success/failure)
+- **LOG** payments, refunds, event creation/updates, account changes, check-ins, Admin actions
+- **PRESERVE** logs indefinitely for compliance
+
+### 10.4 Notifications
+- **SEND** email/SMS for: registration, password reset, order confirmation, refund status, support responses, Admin decisions
+- **INCLUDE** relevant details and action tracking links
+- **RETRY** failed notifications up to 3 times
+
+### 10.5 Data Integrity (FR19)
+- **USE** database transactions for multi-step operations
+- **VALIDATE** record existence before operations
+- **HANDLE** concurrent modifications (optimistic locking)
+- **IMPLEMENT** soft delete instead of hard delete for audit trail
+- **PRESERVE** data for minimum retention period (e.g., 90 days for deleted accounts)
+
+### 10.6 Error Handling
+- **DISPLAY** user-friendly error messages
+- **LOG** technical errors for debugging
+- **PROVIDE** recovery options (retry, go back, contact support)
+- **HANDLE** network failures gracefully
+- **IMPLEMENT** timeout mechanisms for all external calls
+
+### 10.7 Status Enforcement (FR21)
+- **BLOCK** Inactive/Suspended users from logging in
+- **EXCLUDE** deleted users from active listings
+- **HIDE** pending events from customers
+- **BLOCK** used tickets from being used again
+- **BLOCK** refunded tickets from check-in (FR8)
+
+---
+
+## 11. ENTITY RELATIONSHIPS
+
+### Core Entities
+- **User**: Unique user ID, role (Customer/Verified Organizer/Admin) (FR11)
+  - Relationships: has many Orders, has many Events (if Organizer), has OrganizerProfile
+- **Event**: Unique auto-generated event ID (FR2), linked to organizer user ID
+  - Relationships: belongs to User (organizer), has many TicketTypes, has many Orders
+- **Order**: Unique order ID (FR4), linked to customer user ID and event ID
+  - Relationships: belongs to User (customer), belongs to Event, has many Tickets
+- **Ticket**: Unique QR code (FR6), linked to order ID and ticket type
+  - Relationships: belongs to Order, belongs to TicketType
+- **TicketType**: Linked to event ID
+  - Relationships: belongs to Event, has many Tickets
+- **RefundInfo**: Linked to ticket ID and order ID
+  - Relationships: belongs to Ticket, belongs to Order
+- **SupportTicket**: Unique ticket ID, linked to customer and event's organizer
+  - Relationships: belongs to User (customer), belongs to Event
+- **OrganizerProfile**: KYC data, linked to user ID
+  - Relationships: belongs to User
+- **Session**: User session management
+  - Relationships: belongs to User
+
+---
+
+## 12. CODING STANDARDS
+
+### Entity Classes
+- **USE** JPA annotations: `@Entity`, `@Table`, `@Id`, `@GeneratedValue`
+- **USE** proper relationships: `@ManyToOne`, `@OneToMany`, `@OneToOne`
+- **USE** `@Column` with constraints: `nullable`, `unique`, `length`
+- **IMPLEMENT** `@CreatedDate` and `@LastModifiedDate` for auditing
+- **USE** enums for status fields (EventStatus, OrderStatus, UserRole, etc.)
+- **IMPLEMENT** soft delete with `deleted` boolean or `deletedAt` timestamp
+
+### Repository Classes
+- **EXTEND** `JpaRepository<Entity, ID>`
+- **USE** query methods following Spring Data naming conventions
+- **IMPLEMENT** custom queries with `@Query` when needed
+- **USE** `@Transactional` for multi-step operations
+
+### Service Classes
+- **ANNOTATE** with `@Service`
+- **INJECT** dependencies via constructor injection
+- **THROW** custom exceptions: `BusinessRuleViolationException`, `ResourceNotFoundException`, `UnauthorizedException`
+- **USE** `@Transactional` for operations that modify data
+- **IMPLEMENT** all business rule validations before persistence
+- **LOG** important operations and errors
+
+### Controller Classes
+- **ANNOTATE** with `@RestController` and `@RequestMapping`
+- **USE** proper HTTP methods: GET, POST, PUT, PATCH, DELETE
+- **RETURN** `ApiResponse<T>` wrapper for consistent API responses
+- **VALIDATE** input with `@Valid` and `@RequestBody`
+- **HANDLE** authentication with `@CurrentUser` parameter
+- **IMPLEMENT** proper HTTP status codes: 200, 201, 400, 401, 403, 404, 500
+
+### Exception Handling
+- **USE** `@ControllerAdvice` for global exception handling
+- **MAP** exceptions to appropriate HTTP status codes
+- **RETURN** consistent error response format
+- **LOG** exceptions with stack traces for debugging
+
+### DTOs
+- **CREATE** separate DTOs for requests and responses
+- **USE** validation annotations: `@NotNull`, `@NotBlank`, `@Email`, `@Size`, `@Min`, `@Max`
+- **IMPLEMENT** proper naming: `LoginRequestDto`, `EventResponseDto`, etc.
+
+---
+
+## 13. SECURITY IMPLEMENTATION
+
+### Password Handling
+- **ALWAYS** use `PasswordEncoderUtil` for MD5 hashing
+- **NEVER** log or expose passwords in responses
+- **VALIDATE** password strength before hashing
+
+### Session Management
+- **IMPLEMENT** `SessionAuthenticationFilter` to validate sessions
+- **STORE** sessions in database (Session entity)
+- **GENERATE** unique session tokens
+- **VALIDATE** session on every protected endpoint
+- **EXPIRE** sessions after 24 hours
+
+### Role-Based Access Control
+- **CHECK** user role before allowing operations
+- **USE** `@CurrentUser` to get authenticated user
+- **THROW** `UnauthorizedException` for invalid access
+- **IMPLEMENT** role checks in service layer, not just controllers
+
+---
+
+## 14. INTEGRATION POINTS
+
+### VNPAY Integration
+- **USE** `VNPayService` for payment operations
+- **IMPLEMENT** payment request with order details
+- **HANDLE** payment callback/webhook
+- **VERIFY** payment signature for security
+- **SUPPORT** refund processing
+
+### Email Service
+- **USE** `EmailService` for sending emails
+- **IMPLEMENT** templates for different email types
+- **HANDLE** email sending failures gracefully
+- **LOG** email sending attempts
+
+### SMS Service
+- **USE** `SMSService` for sending SMS
+- **IMPLEMENT** verification code sending
+- **HANDLE** SMS sending failures gracefully
+- **LOG** SMS sending attempts
+
+### QR Code Service
+- **USE** `QRCodeService` for generating QR codes
+- **GENERATE** unique QR code immediately after payment
+- **ENCODE** ticket information in QR code
+- **SUPPORT** QR code scanning and validation
+
+---
+
+## 15. IMPLEMENTATION CHECKLIST
+
+### Must Implement First (Phase 1)
+- [ ] User entity with roles (Customer, Verified Organizer, Admin)
+- [ ] Authentication: Register, Login, Password Reset
+- [ ] Session management and authentication filter
+- [ ] Event entity and creation workflow
+- [ ] Admin approval for events
+- [ ] Order entity with single pending order enforcement
+- [ ] Ticket reservation with 15-minute timer
+- [ ] VNPAY payment integration
+- [ ] QR code generation after payment
+- [ ] Ticket entity with QR codes
+- [ ] Check-in validation logic
+
+### Phase 2
+- [ ] OrganizerProfile entity and KYC verification
+- [ ] Event statistics dashboard
+- [ ] RefundInfo entity and refund workflow
+- [ ] Admin refund approval
+- [ ] Support ticket system
+- [ ] Email/SMS notification service
+- [ ] Profile management (view/edit)
+
+### Phase 3
+- [ ] Revenue withdrawal workflow
+- [ ] Admin user management (view/edit/delete/change status)
+- [ ] Admin event management (view/edit/delete/change status)
+- [ ] Event update request workflow
+- [ ] Audit logging implementation
+- [ ] Export functionality (PDF/CSV/Excel)
+
+---
+
+## 16. TESTING REQUIREMENTS
+
+### Unit Tests
+- **TEST** all business rule validations
+- **TEST** service layer logic
+- **MOCK** external dependencies (VNPAY, Email, SMS)
+- **VERIFY** exception handling
+
+### Integration Tests
+- **TEST** complete workflows end-to-end
+- **TEST** database transactions
+- **TEST** API endpoints
+- **VERIFY** authentication and authorization
+
+### Security Tests
+- **TEST** unauthorized access attempts
+- **TEST** invalid session handling
+- **TEST** SQL injection prevention
+- **TEST** XSS prevention
+
+---
+
+## 17. COMMON PITFALLS TO AVOID
+
+- **NEVER** assign Organizer or Admin role during registration (only Customer)
+- **NEVER** allow price changes after sales started
+- **NEVER** allow multiple pending orders per customer
+- **NEVER** allow ticket modifications after check-in
+- **NEVER** process refunds without Admin approval
+- **NEVER** allow event creation without Verified Organizer role
+- **NEVER** hard delete data (always soft delete)
+- **NEVER** expose sensitive data in error messages
+- **NEVER** skip validation on user input
+- **NEVER** forget to log critical operations
+
+---
+
+## SUMMARY FOR QUICK REFERENCE
+
+**Critical Business Rules:**
+- FR1: MD5 password hashing
+- FR2: Unique auto-generated event ID
+- FR3: No price changes after sales start
+- FR4: Unique order ID per customer
+- FR5: Single pending order across all events
+- FR6: Unique QR code per ticket, auto-generated after payment, single-use
+- FR7: Refunds require organizer policy + Admin approval
+- FR8: Refunded tickets invalidated for check-in
+- FR9: Unique verified email/phone per user
+- FR10: Password ≥8 chars with letters + numbers
+- FR11: Customer role at registration, Verified Organizer after KYC approval
+- FR12: Lock account after 5 failed logins (30 min)
+- FR13: Only Customers can self-delete
+- FR14: Max tickets per order set by organizer
+- FR15: No modifications to past events
+- FR16: 15-minute order reservation timeout
+- FR17-FR26: Role-based access, audit logging, validation, confirmations
+
+**Role Hierarchy:**
+- Customer: Basic user, can order tickets
+- Verified Organizer: Can create/manage events after KYC approval
+- Admin: Full system access, approves events/refunds/withdrawals
+
+**Critical Workflows:**
+1. Register → Always Customer role
+2. Create Event → Must be Verified Organizer → Admin approves → Published
+3. Order Ticket → Reserve 15min → Pay → Auto-generate QR → Confirmed
+4. Check-in → Validate QR → One-time use → Mark as Used
+5. Refund → Customer requests → Admin approves → Process via VNPAY → Invalidate ticket
+
