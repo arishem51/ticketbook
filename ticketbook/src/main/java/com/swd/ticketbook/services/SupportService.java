@@ -3,12 +3,14 @@ package com.swd.ticketbook.services;
 import com.swd.ticketbook.dto.support.SupportRequest;
 import com.swd.ticketbook.dto.support.SupportResponse;
 import com.swd.ticketbook.entities.Event;
+import com.swd.ticketbook.entities.Order;
 import com.swd.ticketbook.entities.SupportTicket;
 import com.swd.ticketbook.entities.User;
 import com.swd.ticketbook.enums.SupportTicketStatus;
 import com.swd.ticketbook.exceptions.BusinessRuleViolationException;
 import com.swd.ticketbook.exceptions.ResourceNotFoundException;
 import com.swd.ticketbook.repositories.EventRepository;
+import com.swd.ticketbook.repositories.OrderRepository;
 import com.swd.ticketbook.repositories.SupportTicketRepository;
 import com.swd.ticketbook.repositories.UserRepository;
 import org.slf4j.Logger;
@@ -37,6 +39,9 @@ public class SupportService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private OrderRepository orderRepository;
 
     @Autowired
     private EmailService emailService;
@@ -86,6 +91,17 @@ public class SupportService {
         ticket.setCategory(request.getCategory());
         ticket.setStatus(SupportTicketStatus.PENDING);
         ticket.setCreatedAt(LocalDateTime.now());
+        
+        // Set order if related to specific order
+        if (request.getRelatedOrderId() != null) {
+            Order order = orderRepository.findById(request.getRelatedOrderId())
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+            // Verify order belongs to user
+            if (!order.getUser().getUserId().equals(userId)) {
+                throw new BusinessRuleViolationException("Order does not belong to this user");
+            }
+            ticket.setOrder(order);
+        }
 
         ticket = supportRepository.save(ticket);
 

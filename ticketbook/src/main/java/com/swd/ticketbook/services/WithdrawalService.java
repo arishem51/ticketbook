@@ -72,10 +72,6 @@ public class WithdrawalService {
         OrganizerProfile profile = organizerProfileRepository.findByUser(organizer)
             .orElseThrow(() -> new ResourceNotFoundException("Organizer profile not found"));
 
-        if (!profile.getIsBankVerified()) {
-            throw new BusinessRuleViolationException("Bank account must be verified before withdrawal");
-        }
-
         // Check for existing pending withdrawal
         if (withdrawalRequestRepository.existsByOrganizer_UserIdAndStatus(organizerId, "PENDING_REVIEW")) {
             throw new BusinessRuleViolationException("You already have a pending withdrawal request");

@@ -38,7 +38,7 @@ public class Ticket {
     private String qrCode; // FR6: Unique QR code, auto-generated
 
     @Column(name = "seat_number", length = 50)
-    private String seatNumber;
+    private String seatNumber; // Optional: for assigned seating events
 
     @NotNull
     @Enumerated(EnumType.STRING)

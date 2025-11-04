@@ -35,7 +35,7 @@ public class SupportTicket {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id")
-    private Order order;
+    private Order order; // Optional: link to specific order if support is related to an order
 
     @NotNull
     @Column(name = "category", nullable = false, length = 100)

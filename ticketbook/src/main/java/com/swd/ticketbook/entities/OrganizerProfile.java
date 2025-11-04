@@ -64,9 +64,6 @@ public class OrganizerProfile {
     @Column(name = "bank_branch", length = 255)
     private String bankBranch;
 
-    @Column(name = "is_bank_verified", nullable = false)
-    private Boolean isBankVerified = false;
-
     // KYC Documents
     @Column(name = "id_document_path", length = 500)
     private String idDocumentPath;
@@ -79,9 +76,6 @@ public class OrganizerProfile {
 
     @Column(name = "address_proof_document_path", length = 500)
     private String addressProofDocumentPath;
-
-    @Column(name = "payment_certificate_file", length = 500)
-    private String paymentCertificateFile;
 
     // Verification status
     @Column(name = "kyc_status", length = 50, nullable = false)
@@ -101,9 +95,6 @@ public class OrganizerProfile {
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
-
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
 
     // Custom constructor
     public OrganizerProfile(User user) {

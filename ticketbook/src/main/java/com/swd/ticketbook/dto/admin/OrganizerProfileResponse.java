@@ -22,7 +22,6 @@ public class OrganizerProfileResponse {
     private String bankAccountNumber;
     private String bankAccountHolderName;
     private String bankBranch;
-    private Boolean isBankVerified;
     private String idDocumentPath;
     private String businessRegistrationDocumentPath;
     private String taxDocumentPath;
@@ -153,14 +152,6 @@ public class OrganizerProfileResponse {
 
     public void setBankBranch(String bankBranch) {
         this.bankBranch = bankBranch;
-    }
-
-    public Boolean getIsBankVerified() {
-        return isBankVerified;
-    }
-
-    public void setIsBankVerified(Boolean isBankVerified) {
-        this.isBankVerified = isBankVerified;
     }
 
     public String getIdDocumentPath() {

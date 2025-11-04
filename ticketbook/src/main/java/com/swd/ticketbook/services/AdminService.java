@@ -811,7 +811,6 @@ public class AdminService {
         response.setBankAccountNumber(profile.getBankAccountNumber());
         response.setBankAccountHolderName(profile.getBankAccountHolderName());
         response.setBankBranch(profile.getBankBranch());
-        response.setIsBankVerified(profile.getIsBankVerified());
         response.setIdDocumentPath(profile.getIdDocumentPath());
         response.setBusinessRegistrationDocumentPath(profile.getBusinessRegistrationDocumentPath());
         response.setTaxDocumentPath(profile.getTaxDocumentPath());
