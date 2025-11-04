@@ -311,6 +311,88 @@ public class EmailService {
     }
 
     /**
+     * Send event approval notification to organizer (UC-04.9)
+     * 
+     * @param email Organizer email
+     * @param eventName Event name
+     * @param approved Whether event was approved
+     * @param adminNotes Admin notes/reason
+     */
+    public void sendEventApprovalNotification(String email, String eventName, boolean approved, 
+                                            String adminNotes) {
+        logger.info("Sending event approval notification to organizer: {} - Approved: {}", email, approved);
+        
+        String subject = approved ? 
+            "Ticket Book - Event Approved: " + eventName :
+            "Ticket Book - Event Rejected: " + eventName;
+            
+        String message;
+        if (approved) {
+            message = String.format(
+                "Congratulations! Your event has been approved.\n\n" +
+                "Event: %s\n\n" +
+                "Admin Notes: %s\n\n" +
+                "Your event is now live and customers can start booking tickets.\n" +
+                "You can manage your event from the Organizer Dashboard.",
+                eventName, adminNotes
+            );
+        } else {
+            message = String.format(
+                "Your event submission has been reviewed.\n\n" +
+                "Event: %s\n" +
+                "Status: Rejected\n\n" +
+                "Reason: %s\n\n" +
+                "Please review the feedback and resubmit if you'd like to make changes.",
+                eventName, adminNotes
+            );
+        }
+        
+        sendEmail(email, subject, message);
+    }
+
+    /**
+     * Send KYC approval notification to user (UC-04 KYC)
+     * 
+     * @param email User email
+     * @param fullName User full name
+     * @param approved Whether KYC was approved
+     * @param notes Admin notes/reason
+     */
+    public void sendKycApprovalNotification(String email, String fullName, boolean approved, 
+                                          String notes) {
+        logger.info("Sending KYC approval notification to: {} - Approved: {}", email, approved);
+        
+        String subject = approved ? 
+            "Ticket Book - KYC Verification Approved" :
+            "Ticket Book - KYC Verification Rejected";
+            
+        String message;
+        if (approved) {
+            message = String.format(
+                "Hello %s,\n\n" +
+                "Congratulations! Your KYC verification has been approved.\n\n" +
+                "Admin Notes: %s\n\n" +
+                "You are now a Verified Organizer and can create events.\n" +
+                "Visit the Organizer Dashboard to get started.\n\n" +
+                "Thank you for choosing Ticket Book!",
+                fullName, notes
+            );
+        } else {
+            message = String.format(
+                "Hello %s,\n\n" +
+                "Your KYC verification has been reviewed.\n" +
+                "Status: Not Approved\n\n" +
+                "Reason: %s\n\n" +
+                "Please review the feedback and resubmit with correct documentation.\n" +
+                "If you have questions, please contact support.",
+                fullName, notes
+            );
+        }
+        
+        sendEmail(email, subject, message);
+    }
+
+    /**
      * Generic email sending method
      * TODO: Implement actual email sending logic
      * 

@@ -24,6 +24,9 @@ public interface RefundInfoRepository extends JpaRepository<RefundInfo, Long> {
     List<RefundInfo> findByUser_UserIdOrderByRequestDateDesc(Long userId);
     
     // Find refunds by status
+    List<RefundInfo> findByStatus(RefundStatus status);
+    
+    // Find refunds by status ordered
     List<RefundInfo> findByStatusOrderByRequestDateAsc(RefundStatus status);
     
     // Find user's refunds by status
