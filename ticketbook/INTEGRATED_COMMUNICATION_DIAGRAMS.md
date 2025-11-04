@@ -1,4 +1,5 @@
 # Integrated Communication Diagrams (ICD)
+
 ## Ticket Booking System
 
 ## Giải thích về các loại Diagram
@@ -6,17 +7,20 @@
 ### Communication Diagram (Diagram Giao Tiếp) là gì?
 
 **Communication Diagram** (trong UML còn gọi là **Collaboration Diagram**) là một loại diagram mô tả:
+
 - **Các đối tượng/component** trong hệ thống
 - **Cách chúng tương tác và giao tiếp** với nhau
 - **Luồng thông điệp** giữa các đối tượng
 - **Mối quan hệ** giữa các thành phần
 
 **Đặc điểm:**
+
 - Tập trung vào **cấu trúc** và **mối quan hệ** giữa các đối tượng
 - Hiển thị các **đường kết nối** (links) giữa các đối tượng
 - Đánh số thứ tự các thông điệp để thể hiện **thứ tự thực thi**
 
 **So sánh với Sequence Diagram:**
+
 - **Sequence Diagram**: Tập trung vào **thứ tự thời gian**, các đối tượng được sắp xếp theo trục thời gian
 - **Communication Diagram**: Tập trung vào **cấu trúc và mối quan hệ**, các đối tượng được sắp xếp tự do trong không gian
 
@@ -29,6 +33,7 @@ File này bao gồm nhiều loại diagram để mô tả đầy đủ hệ th�
 3. **Component Diagrams** (Diagram 9): Mô tả cấu trúc component và dependencies
 
 **Lý do sử dụng "Communication" trong tên:**
+
 - Tất cả các diagram đều tập trung vào **communication** (giao tiếp) giữa các thành phần
 - Mô tả cách các module **tương tác và trao đổi thông tin** với nhau
 - Phù hợp với mục đích của **Integrated Communication Diagrams (ICD)** - mô tả toàn bộ giao tiếp trong hệ thống
@@ -43,7 +48,7 @@ graph LR
     C -->|4: sendEmail| E[EmailService]
     C -->|5: save| F[UserRepository]
     F -->|6: save| G[(Database)]
-    
+
     style A fill:#e1f5ff
     style B fill:#fff4e1
     style C fill:#fff4e1
@@ -54,17 +59,20 @@ graph LR
 ```
 
 **Giải thích:**
+
 - Các số 1, 2, 3... thể hiện **thứ tự** các thông điệp được gửi
 - Các mũi tên thể hiện **hướng giao tiếp** giữa các đối tượng
 - Layout tự do, tập trung vào **mối quan hệ** giữa các component
 
 **So sánh với Sequence Diagram:**
+
 - Sequence Diagram: Sắp xếp theo trục thời gian (từ trên xuống)
 - Communication Diagram: Sắp xếp tự do, tập trung vào cấu trúc
 
 ---
 
 ## Integrated Communication Diagram (ICD)
+
 ### Complete System Integration - All Use Cases
 
 This diagram integrates all communication diagrams from UC-01 through UC-04, showing high-level subsystems and their key message interactions. The diagram follows the integration order: UC-01 (Authentication) → UC-02 (Ordering) → UC-03 (Organizer) → UC-04 (Admin).
@@ -136,15 +144,15 @@ graph TB
     FE -->|Order Requests| OC
     FE -->|Refund Requests| RC
     FE -->|Support Requests| SC
-    
+
     %% Organizer Interactions
     ORG_USER -->|Organizer Input<br/>Create Event/Statistics| FE
     FE -->|Organizer Requests| ORGC
-    
+
     %% Admin Interactions
     ADMIN_USER -->|Admin Input<br/>Approvals/Management| FE
     FE -->|Admin Requests| ADC
-    
+
     %% Authentication Flow
     AC -->|Register/Login/Profile| AS
     AS -->|Generate Code| VS
@@ -154,7 +162,7 @@ graph TB
     AS -->|User Data| UR
     SS -->|Session Data| UR
     UR -->|Persist Users/Sessions| DB
-    
+
     %% Order Flow
     OC -->|Create Order/Payment| OS
     OS -->|Validate Event| ER
@@ -169,13 +177,13 @@ graph TB
     OR -->|Persist Orders| DB
     TR -->|Persist Tickets| DB
     TTR -->|Persist Ticket Types| DB
-    
+
     %% Check-In Flow
     CHKC -->|Scan QR Code| CHKS
     CHKS -->|Validate Ticket| TR
     CHKS -->|Log Check-In| ALS
     TR -->|Update Ticket Status| DB
-    
+
     %% Refund Flow
     RC -->|Submit Refund| RS
     RS -->|Validate Ticket| TR
@@ -183,13 +191,13 @@ graph TB
     RS -->|Save Refund Info| DB
     RS -->|Send Confirmation| ES
     VNS -->|Refund Transaction| VNPAY_EXT
-    
+
     %% Support Flow
     SC -->|Submit Support| SSVC
     SSVC -->|Get Event| ER
     SSVC -->|Save Ticket| DB
     SSVC -->|Notify Organizer| ES
-    
+
     %% Event Management Flow
     ORGC -->|Create Event| EVS
     ORGC -->|Statistics| STS
@@ -211,7 +219,7 @@ graph TB
     ER -->|Persist Events| DB
     OPR -->|Persist Profiles| DB
     WR -->|Persist Withdrawals| DB
-    
+
     %% Admin Management Flow
     ADC -->|User Management| ADMS
     ADC -->|Event Management| ADMS
@@ -228,11 +236,11 @@ graph TB
     ADMS -->|Log Actions| ALS
     ADMS -->|Notify Users| ES
     ALS -->|Persist Logs| DB
-    
+
     %% External Service Integration
     ES -->|Send Email| EMAIL_EXT
     SMSS -->|Send SMS| SMS_EXT
-    
+
     %% Styling
     style CUST fill:#e1f5ff
     style ORG_USER fill:#e1f5ff
@@ -245,6 +253,7 @@ graph TB
 ```
 
 **Key Points:**
+
 - **High-level subsystems** organized by major functional areas (Authentication, Order Management, Event Management, Admin Management)
 - **UML stereotypes** used to classify components («service», «entity», «state dependent control», «external user»)
 - **Descriptive message labels** showing major interaction patterns, not individual method calls
@@ -323,6 +332,7 @@ graph TB
 ```
 
 **Ghi chú:**
+
 - Mũi tên liền (`-->`): Gọi method/request
 - Mũi tên đứt (`-.->`): Response/return value
 - Số thứ tự (1, 2, 3...): Thể hiện thứ tự thực thi
@@ -361,7 +371,7 @@ graph TB
     DB -.->|7.1: Order created| OS
     OS -.->|3.1: OrderResponse| OC
     OC -.->|2.1: Order created| FE
-    
+
     C -->|8: Initiate payment| FE
     FE -->|9: POST /api/orders/payment| OC
     OC -->|10: initiatePayment| OS
@@ -370,7 +380,7 @@ graph TB
     OS -.->|10.1: Payment URL| OC
     OC -.->|9.1: Payment URL| FE
     FE -->|12: Redirect| VNP
-    
+
     VNP -->|13: POST callback| OC
     OC -->|14: confirmPayment| OS
     OS -->|15: validatePaymentResponse| VNS
@@ -427,17 +437,17 @@ graph TB
     ER -->|6: INSERT INTO events| DB
     DB -.->|6.1: Event saved| ER
     ER -.->|5.1: Event entity| EVS
-    
+
     EVS -->|7: UPDATE status='PENDING_APPROVAL'| DB
     EVS -->|8: notifyAdminForReview| ADMS
     ADMS -->|9: notifyAdmin| EML
     EML -.->|9.1: Notification sent| ADMS
     ADMS -.->|8.1: Notified| EVS
-    
+
     EVS -.->|3.1: EventResponse| ORGC
     ORGC -.->|2.1: Event created| FE
     FE -.->|1.1: Event submitted| ORG
-    
+
     ADMS -->|10: approveEvent| EVS
     EVS -->|11: UPDATE status='APPROVED'| DB
     EVS -->|12: notifyOrganizer| EML
@@ -485,7 +495,7 @@ graph TB
     OR -->|8: SELECT * FROM orders| DB
     DB -.->|8.1: Order data| OR
     OR -.->|7.1: Order entity| CHKS
-    
+
     CHKS -->|9: UPDATE tickets status='CHECKED_IN'| DB
     CHKS -->|10: logCheckIn| ALS
     ALS -->|11: INSERT INTO audit_logs| DB
@@ -529,20 +539,20 @@ graph TB
     RS -->|4: getOrderDetails| OS
     OS -.->|4.1: Order details| RS
     RS -->|5: validateRefundEligibility| RS
-    
+
     RS -->|6: INSERT INTO refund_info| DB
     RS -->|7: processRefund| VNS
     VNS -->|8: Refund API call| VNP
     VNP -.->|8.1: Refund processed| VNS
     VNS -.->|7.1: Refund successful| RS
-    
+
     RS -->|9: UPDATE refund_info status='APPROVED'| DB
     RS -->|10: UPDATE orders status='REFUNDED'| DB
     RS -->|11: updateTicketStatus| TR
     TR -->|12: UPDATE tickets status='REFUNDED'| DB
     RS -->|13: sendRefundConfirmation| EML
     EML -.->|13.1: Email sent| RS
-    
+
     RS -.->|3.1: RefundResponse| RC
     RC -.->|2.1: Refund processed| FE
     FE -.->|1.1: Refund status| C
@@ -590,7 +600,7 @@ graph TB
     SS -.->|3.1: SupportTicketResponse| SC
     SC -.->|2.1: Ticket created| FE
     FE -.->|1.1: Ticket ID received| C
-    
+
     ADMS -->|8: respondToTicket| SS
     SS -->|9: UPDATE status='RESOLVED'| DB
     SS -->|10: notifyCustomer| EML
@@ -634,7 +644,7 @@ graph TB
     DB -.->|4.1: Pending events| ADMS
     ADMS -.->|3.1: List of events| ADC
     ADC -.->|2.1: Events list| FE
-    
+
     ADM -->|5: Approve event| FE
     FE -->|6: PUT /api/admin/events/{id}/approve| ADC
     ADC -->|7: approveEvent| ADMS
@@ -642,17 +652,17 @@ graph TB
     EVS -->|9: UPDATE status='APPROVED'| DB
     EVS -->|10: notifyOrganizer| EML
     EML -.->|10.1: Notification sent| EVS
-    
+
     ADMS -->|11: approveKyc| ORGS
     ORGS -->|12: UPDATE kyc_status='APPROVED'| DB
     ORGS -->|13: notifyOrganizer| EML
     EML -.->|13.1: Notification sent| ORGS
-    
+
     ADMS -->|14: processWithdrawal| WDS
     WDS -->|15: UPDATE status='PROCESSED'| DB
     WDS -->|16: notifyOrganizer| EML
     EML -.->|16.1: Notification sent| WDS
-    
+
     ADMS -->|17: getSystemStatistics| STS
     STS -->|18: Aggregate queries| DB
     DB -.->|18.1: Statistics data| STS
@@ -698,7 +708,7 @@ graph TB
     SR -->|6: SELECT * FROM sessions| DB
     DB -.->|6.1: Session data| SR
     SR -.->|5.1: Session entity| SS
-    
+
     SS -->|7: checkExpiry| SS
     SS -->|8: updateLastAccess| SR
     SR -->|9: UPDATE last_access| DB
@@ -710,7 +720,7 @@ graph TB
     CTRL -.->|11.1: Response| SAF
     SAF -.->|2.1: Response| SF
     SF -.->|1.1: Response| CL
-    
+
     SS -->|13: DELETE expired session| SR
     SR -->|14: DELETE FROM sessions| DB
 
@@ -728,14 +738,14 @@ graph TB
 
 ### So sánh Sequence Diagram vs Communication Diagram
 
-| Đặc điểm | Sequence Diagram | Communication Diagram |
-|----------|------------------|----------------------|
-| **Trọng tâm** | Thứ tự thời gian | Cấu trúc và mối quan hệ |
-| **Layout** | Sắp xếp theo trục thời gian (trên→dưới) | Layout tự do |
-| **Đối tượng** | Lifelines (đường sống) | Objects (hình chữ nhật) |
-| **Messages** | Mũi tên theo thời gian | Số thứ tự trên links |
-| **Ưu điểm** | Dễ theo dõi luồng thời gian | Dễ thấy cấu trúc quan hệ |
-| **Phù hợp** | Phân tích luồng thực thi | Phân tích kiến trúc |
+| Đặc điểm      | Sequence Diagram                        | Communication Diagram    |
+| ------------- | --------------------------------------- | ------------------------ |
+| **Trọng tâm** | Thứ tự thời gian                        | Cấu trúc và mối quan hệ  |
+| **Layout**    | Sắp xếp theo trục thời gian (trên→dưới) | Layout tự do             |
+| **Đối tượng** | Lifelines (đường sống)                  | Objects (hình chữ nhật)  |
+| **Messages**  | Mũi tên theo thời gian                  | Số thứ tự trên links     |
+| **Ưu điểm**   | Dễ theo dõi luồng thời gian             | Dễ thấy cấu trúc quan hệ |
+| **Phù hợp**   | Phân tích luồng thực thi                | Phân tích kiến trúc      |
 
 ---
 
@@ -789,10 +799,10 @@ sequenceDiagram
     User->>Frontend: Register/Login Request
     Frontend->>AuthController: POST /api/auth/register
     AuthController->>AuthService: register(request)
-    
+
     AuthService->>VerificationService: generateCode(email/phone)
     VerificationService-->>AuthService: verificationCode
-    
+
     alt Email Registration
         AuthService->>EmailService: sendVerificationCode(email, code)
         EmailService-->>AuthService: Email sent
@@ -800,15 +810,15 @@ sequenceDiagram
         AuthService->>SMSService: sendVerificationCode(phone, code)
         SMSService-->>AuthService: SMS sent
     end
-    
+
     AuthService->>UserRepository: save(user)
     UserRepository->>DB: INSERT INTO users
     DB-->>UserRepository: User saved
     UserRepository-->>AuthService: User entity
-    
+
     AuthService->>SessionService: createSession(user)
     SessionService-->>AuthService: Session token
-    
+
     AuthService-->>AuthController: AuthResponse(token)
     AuthController-->>Frontend: 201 Created + AuthResponse
     Frontend-->>User: Login successful
@@ -832,53 +842,107 @@ sequenceDiagram
     participant QRCodeService
     participant DB
 
+    Note over Customer,DB: Timeline: Order Creation Phase
+
     Customer->>Frontend: Select tickets & create order
+    activate Frontend
     Frontend->>OrderController: POST /api/orders
+    activate OrderController
     OrderController->>OrderService: createOrder(userId, request)
-    
+    activate OrderService
+
     OrderService->>EventService: validateEventAvailability(eventId)
+    activate EventService
     EventService-->>OrderService: Event available
-    
+    deactivate EventService
+
     OrderService->>TicketRepository: reserveTickets(ticketTypes)
+    activate TicketRepository
     TicketRepository->>DB: UPDATE tickets SET status='RESERVED'
+    activate DB
     DB-->>TicketRepository: Tickets reserved
+    deactivate DB
     TicketRepository-->>OrderService: Reserved tickets
-    
+    deactivate TicketRepository
+
     OrderService->>DB: INSERT INTO orders
+    activate DB
     DB-->>OrderService: Order created
+    deactivate DB
     OrderService-->>OrderController: OrderResponse
+    deactivate OrderService
     OrderController-->>Frontend: Order created (15 min expiry)
-    
+    deactivate OrderController
+    deactivate Frontend
+
+    Note over Customer,DB: Timeline: Payment Initiation Phase
+
     Customer->>Frontend: Initiate payment
+    activate Frontend
     Frontend->>OrderController: POST /api/orders/payment
+    activate OrderController
     OrderController->>OrderService: initiatePayment(userId, orderId)
-    
+    activate OrderService
+
     OrderService->>VNPayService: createPaymentUrl(orderId, amount)
+    activate VNPayService
     VNPayService-->>OrderService: Payment URL
+    deactivate VNPayService
     OrderService-->>OrderController: Payment URL
+    deactivate OrderService
     OrderController-->>Frontend: Payment URL
+    deactivate OrderController
     Frontend->>VNPay: Redirect to payment page
-    
+    deactivate Frontend
+    activate VNPay
+
+    Note over Customer,DB: Timeline: Payment Processing Phase
+
     Customer->>VNPay: Complete payment
     VNPay->>OrderController: POST /api/orders/{orderId}/confirm?transactionId=xxx
+    deactivate VNPay
+    activate OrderController
     OrderController->>OrderService: confirmPayment(orderId, transactionId)
-    
+    activate OrderService
+
     OrderService->>VNPayService: validatePaymentResponse(params)
+    activate VNPayService
     VNPayService->>VNPay: Verify transaction
+    activate VNPay
     VNPay-->>VNPayService: Transaction valid
+    deactivate VNPay
     VNPayService-->>OrderService: Payment confirmed
-    
+    deactivate VNPayService
+
+    Note over Customer,DB: Timeline: Order Confirmation & Ticket Generation Phase
+
     OrderService->>DB: UPDATE orders SET status='CONFIRMED'
+    activate DB
+    DB-->>OrderService: Orders updated
+    deactivate DB
     OrderService->>DB: UPDATE tickets SET status='BOOKED'
+    activate DB
+    DB-->>OrderService: Tickets updated
+    deactivate DB
     OrderService->>QRCodeService: generateQRCode(ticket)
+    activate QRCodeService
     QRCodeService-->>OrderService: QR Code image
-    
+    deactivate QRCodeService
+
     OrderService->>EmailService: sendETickets(order, tickets)
+    activate EmailService
     EmailService-->>OrderService: Email sent
-    
+    deactivate EmailService
+
     OrderService-->>OrderController: OrderResponse with tickets
+    deactivate OrderService
     OrderController-->>Frontend: Payment confirmed
+    deactivate OrderController
+    activate Frontend
     Frontend-->>Customer: E-tickets received
+    deactivate Frontend
+
+    Note over Customer,DB: Timeline: Process Complete
 ```
 
 ---
@@ -900,14 +964,14 @@ sequenceDiagram
     Organizer->>Frontend: Create new event
     Frontend->>OrganizerController: POST /api/organizer/events
     OrganizerController->>EventService: createEvent(organizerId, request)
-    
+
     EventService->>OrganizerService: validateOrganizerStatus(organizerId)
     OrganizerService-->>EventService: Organizer verified
-    
+
     EventService->>EventRepository: save(event)
     EventRepository->>DB: INSERT INTO events
     DB-->>EventRepository: Event saved
-    
+
     alt Submit for Approval
         EventService->>DB: UPDATE events SET status='PENDING_APPROVAL'
         EventService->>AdminService: notifyAdminForReview(eventId)
@@ -916,12 +980,12 @@ sequenceDiagram
     else Save as Draft
         EventService->>DB: UPDATE events SET status='DRAFT'
     end
-    
+
     EventRepository-->>EventService: Event entity
     EventService-->>OrganizerController: EventResponse
     OrganizerController-->>Frontend: Event created
     Frontend-->>Organizer: Event saved/submitted
-    
+
     Note over AdminService: Admin reviews and approves/rejects
     AdminService->>EventRepository: updateEventStatus(eventId, 'APPROVED')
     EventRepository->>DB: UPDATE events
@@ -948,20 +1012,20 @@ sequenceDiagram
     Staff->>Frontend: Scan QR code
     Frontend->>CheckInController: POST /api/checkin/scan
     CheckInController->>CheckInService: scanTicket(qrCodeData)
-    
+
     CheckInService->>QRCodeService: decodeQRCode(qrCodeData)
     QRCodeService-->>CheckInService: Ticket ID
-    
+
     CheckInService->>TicketRepository: findByTicketId(ticketId)
     TicketRepository->>DB: SELECT * FROM tickets WHERE ticket_id=?
     DB-->>TicketRepository: Ticket data
     TicketRepository-->>CheckInService: Ticket entity
-    
+
     CheckInService->>OrderRepository: findOrderByTicket(ticketId)
     OrderRepository->>DB: SELECT * FROM orders WHERE order_id=?
     DB-->>OrderRepository: Order data
     OrderRepository-->>CheckInService: Order entity
-    
+
     alt Ticket Valid
         CheckInService->>DB: UPDATE tickets SET status='CHECKED_IN'
         CheckInService->>AuditLogService: logCheckIn(ticketId, staffId)
@@ -970,7 +1034,7 @@ sequenceDiagram
     else Ticket Invalid
         CheckInService-->>CheckInController: CheckInResponse(error: "Already checked in")
     end
-    
+
     CheckInController-->>Frontend: Check-in result
     Frontend-->>Staff: Display result
 ```
@@ -995,34 +1059,34 @@ sequenceDiagram
     Customer->>Frontend: Request refund
     Frontend->>RefundController: POST /api/refunds
     RefundController->>RefundService: requestRefund(userId, orderId, reason)
-    
+
     RefundService->>OrderService: getOrderDetails(orderId)
     OrderService-->>RefundService: Order details
-    
+
     RefundService->>RefundService: validateRefundEligibility(order)
-    
+
     alt Refund Eligible
         RefundService->>DB: INSERT INTO refund_info
         RefundService->>VNPayService: processRefund(orderId, amount)
         VNPayService->>VNPay: Refund API call
         VNPay-->>VNPayService: Refund processed
         VNPayService-->>RefundService: Refund successful
-        
+
         RefundService->>DB: UPDATE refund_info SET status='APPROVED'
         RefundService->>DB: UPDATE orders SET status='REFUNDED'
         RefundService->>TicketRepository: updateTicketStatus(tickets, 'REFUNDED')
         TicketRepository->>DB: UPDATE tickets SET status='REFUNDED'
-        
+
         RefundService->>EmailService: sendRefundConfirmation(order)
         EmailService-->>RefundService: Email sent
-        
+
         RefundService-->>RefundController: RefundResponse
         RefundController-->>Frontend: Refund processed
     else Refund Not Eligible
         RefundService-->>RefundController: Error: "Refund not eligible"
         RefundController-->>Frontend: Refund rejected
     end
-    
+
     Frontend-->>Customer: Refund status
 ```
 
@@ -1044,22 +1108,22 @@ sequenceDiagram
     Customer->>Frontend: Create support ticket
     Frontend->>SupportController: POST /api/support/tickets
     SupportController->>SupportService: createTicket(userId, request)
-    
+
     SupportService->>SupportTicketRepository: save(ticket)
     SupportTicketRepository->>DB: INSERT INTO support_tickets
     DB-->>SupportTicketRepository: Ticket saved
     SupportTicketRepository-->>SupportService: Ticket entity
-    
+
     SupportService->>EmailService: notifySupportTeam(ticket)
     EmailService-->>SupportService: Notification sent
-    
+
     SupportService->>AdminService: assignTicketToAdmin(ticketId)
     AdminService-->>SupportService: Ticket assigned
-    
+
     SupportService-->>SupportController: SupportTicketResponse
     SupportController-->>Frontend: Ticket created
     Frontend-->>Customer: Ticket ID received
-    
+
     Note over AdminService: Admin responds to ticket
     AdminService->>SupportService: respondToTicket(ticketId, response)
     SupportService->>DB: UPDATE support_tickets SET status='RESOLVED'
@@ -1092,24 +1156,24 @@ sequenceDiagram
     DB-->>AdminService: Pending events
     AdminService-->>AdminController: List of events
     AdminController-->>Frontend: Events list
-    
+
     Admin->>Frontend: Approve event
     Frontend->>AdminController: PUT /api/admin/events/{eventId}/approve
     AdminController->>AdminService: approveEvent(eventId)
-    
+
     AdminService->>EventService: updateEventStatus(eventId, 'APPROVED')
     EventService->>DB: UPDATE events SET status='APPROVED'
     EventService->>EmailService: notifyOrganizer(event, 'APPROVED')
     EmailService-->>EventService: Notification sent
-    
+
     AdminService->>OrganizerService: approveKyc(organizerId)
     OrganizerService->>DB: UPDATE organizer_profiles SET kyc_status='APPROVED'
     OrganizerService->>EmailService: notifyOrganizer(kycStatus)
-    
+
     AdminService->>WithdrawalService: processWithdrawal(withdrawalId)
     WithdrawalService->>DB: UPDATE withdrawal_requests SET status='PROCESSED'
     WithdrawalService->>EmailService: notifyOrganizer(withdrawal)
-    
+
     AdminService->>StatisticsService: getSystemStatistics()
     StatisticsService->>DB: Aggregate queries
     DB-->>StatisticsService: Statistics data
@@ -1254,13 +1318,13 @@ graph TB
 
     WEB -->|REST API| APP
     MOBILE -->|REST API| APP
-    
+
     APP -->|Payment Requests| VNPAY
     VNPAY -->|Callbacks| APP
-    
+
     APP -->|Send Email| EMAIL
     APP -->|Send SMS| SMS
-    
+
     APP <-->|JDBC/JPA| DB
 
     style APP fill:#4CAF50
@@ -1289,18 +1353,18 @@ sequenceDiagram
 
     Client->>SecurityFilter: HTTP Request with Authorization header
     SecurityFilter->>SessionAuthFilter: Process request
-    
+
     SessionAuthFilter->>SessionAuthFilter: Extract token from header
     SessionAuthFilter->>SessionService: validateSession(token)
-    
+
     SessionService->>SessionRepository: findByToken(token)
     SessionRepository->>DB: SELECT * FROM sessions WHERE token=?
     DB-->>SessionRepository: Session data
-    
+
     alt Session Valid
         SessionRepository-->>SessionService: Session entity
         SessionService->>SessionService: checkExpiry(session)
-        
+
         alt Session Not Expired
             SessionService->>SessionRepository: updateLastAccess(session)
             SessionRepository->>DB: UPDATE sessions SET last_access=?
@@ -1349,4 +1413,3 @@ sequenceDiagram
 - Session expiry (24 hours default)
 - Role-based access control (CUSTOMER, VERIFIED_ORGANIZER, ADMIN)
 - CORS configuration for frontend integration
-
