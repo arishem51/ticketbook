@@ -62,17 +62,16 @@ public class AuthService {
             throw new IllegalArgumentException("Password must be at least 8 characters with letters and numbers");
         }
 
-        // FR9: Check for duplicate email/phone
-        if (request.getEmail() != null && userRepository.existsByEmailIgnoreCase(request.getEmail())) {
-            throw new IllegalArgumentException("This email is already registered. Please login or use a different email.");
-        }
-        if (request.getPhone() != null && userRepository.existsByPhone(request.getPhone())) {
-            throw new IllegalArgumentException("This phone is already registered. Please login or use a different phone.");
+        // Determine contact (email or phone)
+        String contact = request.getEmail() != null ? request.getEmail() : request.getPhone();
+
+        // FR9: Check for duplicate contact
+        if (userRepository.existsByContactIgnoreCase(contact)) {
+            throw new IllegalArgumentException("This contact is already registered. Please login or use a different contact.");
         }
 
         // Verify verification code
-        String identifier = request.getEmail() != null ? request.getEmail() : request.getPhone();
-        if (!verificationCodeService.verifyCode(identifier, request.getVerificationCode())) {
+        if (!verificationCodeService.verifyCode(contact, request.getVerificationCode())) {
             throw new IllegalArgumentException("Invalid or expired verification code");
         }
 
@@ -80,30 +79,17 @@ public class AuthService {
         String encodedPassword = PasswordEncoderUtil.encode(request.getPassword());
 
         // FR11: Create user with CUSTOMER role
-        User user = new User();
-        user.setFullName(request.getFullName());
-        user.setEmail(request.getEmail());
-        user.setPhone(request.getPhone());
-        user.setPassword(encodedPassword);
-        user.setRole(UserRole.CUSTOMER);
-        user.setOauthProvider(request.getEmail() != null ? "EMAIL" : "PHONE");
-
-        // Mark email/phone as verified
-        if (request.getEmail() != null) {
-            user.setIsEmailVerified(true);
-        }
-        if (request.getPhone() != null) {
-            user.setIsPhoneVerified(true);
-        }
+        User user = new User(request.getFullName(), contact, encodedPassword, UserRole.CUSTOMER);
+        user.setOauthProvider(contact.contains("@") ? "EMAIL" : "PHONE");
+        user.setIsVerified(true);
 
         user = userRepository.save(user);
 
         // Send welcome notification
-        if (user.getEmail() != null) {
-            emailService.sendWelcomeEmail(user.getEmail(), user.getFullName());
-        }
-        if (user.getPhone() != null) {
-            smsService.sendWelcomeSMS(user.getPhone(), user.getFullName());
+        if (user.isEmail()) {
+            emailService.sendWelcomeEmail(user.getContact(), user.getFullName());
+        } else if (user.isPhone()) {
+            smsService.sendWelcomeSMS(user.getContact(), user.getFullName());
         }
 
         // Create session and auto-login
@@ -120,15 +106,15 @@ public class AuthService {
      * UC-01.1: Send Verification Code
      * Used during registration
      * 
-     * @param emailOrPhone Email or phone to send code to
+     * @param contact Email or phone to send code to
      */
-    public void sendVerificationCode(String emailOrPhone) {
-        String code = verificationCodeService.createVerificationCode(emailOrPhone);
+    public void sendVerificationCode(String contact) {
+        String code = verificationCodeService.createVerificationCode(contact);
         
-        if (emailOrPhone.contains("@")) {
-            emailService.sendVerificationCode(emailOrPhone, code);
+        if (contact.contains("@")) {
+            emailService.sendVerificationCode(contact, code);
         } else {
-            smsService.sendVerificationCode(emailOrPhone, code);
+            smsService.sendVerificationCode(contact, code);
         }
     }
 
@@ -146,12 +132,12 @@ public class AuthService {
             throw new IllegalArgumentException("Email or phone number is required");
         }
 
-        // Find user by email or phone
-        String identifier = request.getIdentifier();
-        Optional<User> userOpt = userRepository.findByEmailOrPhone(identifier);
+        // Find user by contact
+        String contact = request.getIdentifier();
+        Optional<User> userOpt = userRepository.findByContactIgnoreCase(contact);
 
         if (userOpt.isEmpty()) {
-            throw new IllegalArgumentException("Invalid phone/email or password");
+            throw new IllegalArgumentException("Invalid contact or password");
         }
 
         User user = userOpt.get();
@@ -170,7 +156,7 @@ public class AuthService {
         if (!PasswordEncoderUtil.matches(request.getPassword(), user.getPassword())) {
             user.incrementFailedLoginAttempts();
             userRepository.save(user);
-            throw new IllegalArgumentException("Invalid phone/email or password");
+            throw new IllegalArgumentException("Invalid contact or password");
         }
 
         // Reset failed attempts on successful login
@@ -199,12 +185,12 @@ public class AuthService {
      * UC-01.3: Request Password Reset
      * Sends reset link via email/SMS
      * 
-     * @param emailOrPhone Email or phone to send reset link to
+     * @param contact Email or phone to send reset link to
      */
     @Transactional
-    public void requestPasswordReset(String emailOrPhone) {
+    public void requestPasswordReset(String contact) {
         // Find user (but don't reveal if account exists for security)
-        Optional<User> userOpt = userRepository.findByEmailOrPhone(emailOrPhone);
+        Optional<User> userOpt = userRepository.findByContactIgnoreCase(contact);
         
         if (userOpt.isEmpty()) {
             // Return success message anyway (security measure)
@@ -222,10 +208,10 @@ public class AuthService {
         resetTokenRepository.save(token);
 
         // Send reset link
-        if (emailOrPhone.contains("@")) {
-            emailService.sendPasswordResetLink(emailOrPhone, resetToken);
+        if (contact.contains("@")) {
+            emailService.sendPasswordResetLink(contact, resetToken);
         } else {
-            smsService.sendPasswordResetLink(emailOrPhone, resetToken);
+            smsService.sendPasswordResetLink(contact, resetToken);
         }
     }
 
@@ -277,11 +263,10 @@ public class AuthService {
         sessionService.invalidateAllUserSessions(user);
 
         // Send confirmation
-        if (user.getEmail() != null) {
-            emailService.sendPasswordChangeConfirmation(user.getEmail());
-        }
-        if (user.getPhone() != null) {
-            smsService.sendPasswordChangeConfirmation(user.getPhone());
+        if (user.isEmail()) {
+            emailService.sendPasswordChangeConfirmation(user.getContact());
+        } else if (user.isPhone()) {
+            smsService.sendPasswordChangeConfirmation(user.getContact());
         }
     }
 
@@ -321,38 +306,22 @@ public class AuthService {
             user.setFullName(request.getFullName());
         }
 
-        // Update email (requires verification)
-        if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
-            // FR9: Check for duplicate email
-            if (userRepository.existsByEmailIgnoreCase(request.getEmail())) {
+        // Update contact (email or phone - requires verification)
+        String newContact = request.getEmail() != null ? request.getEmail() : request.getPhone();
+        if (newContact != null && !newContact.equals(user.getContact())) {
+            // FR9: Check for duplicate contact
+            if (userRepository.existsByContactIgnoreCase(newContact)) {
                 throw new IllegalArgumentException("This contact is already in use");
             }
 
             // Verify verification code
             if (request.getVerificationCode() == null || 
-                !verificationCodeService.verifyCode(request.getEmail(), request.getVerificationCode())) {
+                !verificationCodeService.verifyCode(newContact, request.getVerificationCode())) {
                 throw new IllegalArgumentException("Invalid verification code");
             }
 
-            user.setEmail(request.getEmail());
-            user.setIsEmailVerified(true);
-        }
-
-        // Update phone (requires verification)
-        if (request.getPhone() != null && !request.getPhone().equals(user.getPhone())) {
-            // FR9: Check for duplicate phone
-            if (userRepository.existsByPhone(request.getPhone())) {
-                throw new IllegalArgumentException("This contact is already in use");
-            }
-
-            // Verify verification code
-            if (request.getVerificationCode() == null || 
-                !verificationCodeService.verifyCode(request.getPhone(), request.getVerificationCode())) {
-                throw new IllegalArgumentException("Invalid verification code");
-            }
-
-            user.setPhone(request.getPhone());
-            user.setIsPhoneVerified(true);
+            user.setContact(newContact);
+            user.setIsVerified(true);
         }
 
         user = userRepository.save(user);
@@ -392,8 +361,8 @@ public class AuthService {
         sessionService.invalidateAllUserSessions(user);
 
         // Send confirmation
-        if (user.getEmail() != null) {
-            emailService.sendAccountDeletionConfirmation(user.getEmail());
+        if (user.isEmail()) {
+            emailService.sendAccountDeletionConfirmation(user.getContact());
         }
     }
 
@@ -443,11 +412,10 @@ public class AuthService {
         sessionService.invalidateAllUserSessions(user);
 
         // Send confirmation notification
-        if (user.getEmail() != null) {
-            emailService.sendPasswordChangeConfirmation(user.getEmail());
-        }
-        if (user.getPhone() != null) {
-            smsService.sendPasswordChangeConfirmation(user.getPhone());
+        if (user.isEmail()) {
+            emailService.sendPasswordChangeConfirmation(user.getContact());
+        } else if (user.isPhone()) {
+            smsService.sendPasswordChangeConfirmation(user.getContact());
         }
     }
 
@@ -463,10 +431,9 @@ public class AuthService {
         response.setRole(user.getRole());
         response.setRegistrationDate(user.getRegistrationDate());
         response.setLastLogin(user.getLastLogin());
-        response.setIsEmailVerified(user.getIsEmailVerified());
-        response.setIsPhoneVerified(user.getIsPhoneVerified());
+        response.setIsEmailVerified(user.getIsVerified() && user.isEmail());
+        response.setIsPhoneVerified(user.getIsVerified() && user.isPhone());
         response.setOauthProvider(user.getOauthProvider());
         return response;
     }
 }
-
